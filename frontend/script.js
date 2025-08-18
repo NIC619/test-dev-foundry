@@ -75,11 +75,14 @@ class AccountManager {
         this.mintTokensBtn = document.getElementById('mint-tokens');
         this.transferRecipientInput = document.getElementById('transfer-recipient');
         this.transferAmountInput = document.getElementById('transfer-amount');
+        this.transferFeeInput = document.getElementById('transfer-fee');
         this.transferTokensBtn = document.getElementById('transfer-tokens');
 
         // Balance display elements
         this.relayerEthBalance = document.getElementById('relayer-eth-balance');
+        this.relayerTokenBalance = document.getElementById('relayer-token-balance');
         this.userTokenBalance = document.getElementById('user-token-balance');
+        this.userEthBalance = document.getElementById('user-eth-balance');
     }
 
     bindEvents() {
@@ -124,6 +127,7 @@ class AccountManager {
         this.mintAmountInput.addEventListener('input', () => this.updateMintButton());
         this.transferRecipientInput.addEventListener('input', () => this.updateTransferButton());
         this.transferAmountInput.addEventListener('input', () => this.updateTransferButton());
+        this.transferFeeInput.addEventListener('input', () => this.updateTransferButton());
     }
 
     initializeBlockchainConfig() {
@@ -238,6 +242,8 @@ class AccountManager {
             
             // Update token balance when contract status changes
             this.updateUserTokenBalance();
+            this.updateRelayerTokenBalance();
+            this.updateUserEthBalance();
         } catch (error) {
             console.error('Error checking contract status:', error);
             this.contractStatus.textContent = 'Error Checking';
@@ -418,6 +424,7 @@ class AccountManager {
     updateTransferButton() {
         const hasRecipient = this.transferRecipientInput.value.trim() !== '';
         const hasAmount = this.transferAmountInput.value.trim() !== '' && parseFloat(this.transferAmountInput.value) > 0;
+        const hasValidFee = this.transferFeeInput.value.trim() === '' || parseFloat(this.transferFeeInput.value) >= 0;
         const hasUserAccount = localStorage.getItem('userAccount') !== null;
         const hasRelayerAccount = localStorage.getItem('relayerAccount') !== null;
         const isContractDeployed = this.contractStatus.textContent === 'Already Deployed' || 
@@ -425,7 +432,7 @@ class AccountManager {
         const isDelegateContractDeployed = this.delegateContractStatus.textContent === 'Already Deployed' || 
                                           this.delegateContractStatus.textContent === 'Deployed Successfully';
         
-        this.transferTokensBtn.disabled = !hasRecipient || !hasAmount || !hasUserAccount || !hasRelayerAccount || !isContractDeployed || !isDelegateContractDeployed;
+        this.transferTokensBtn.disabled = !hasRecipient || !hasAmount || !hasValidFee || !hasUserAccount || !hasRelayerAccount || !isContractDeployed || !isDelegateContractDeployed;
     }
 
     async mintTokens() {
@@ -473,6 +480,8 @@ class AccountManager {
 
             // Update balances after minting
             this.updateUserTokenBalance();
+            this.updateRelayerTokenBalance();
+            this.updateUserEthBalance();
 
         } catch (error) {
             console.error('Error minting tokens:', error);
@@ -488,6 +497,7 @@ class AccountManager {
         try {
             const recipient = this.transferRecipientInput.value.trim();
             const amount = this.transferAmountInput.value.trim();
+            const fee = this.transferFeeInput.value.trim();
 
             if (!this.isValidAddress(recipient)) {
                 this.showErrorMessage('Invalid recipient address');
@@ -503,7 +513,7 @@ class AccountManager {
             }
 
             const { privateKey: userPrivateKey, address: userAddress } = JSON.parse(userData);
-            const { privateKey: relayerPrivateKey } = JSON.parse(relayerData);
+            const { privateKey: relayerPrivateKey, address: relayerAddress } = JSON.parse(relayerData);
 
             const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
             
@@ -549,6 +559,17 @@ class AccountManager {
                 data: transferData,
                 value: 0
             }];
+            
+            // Add fee transfer to relayer if fee is specified
+            if (fee && parseFloat(fee) > 0) {
+                const feeInWei = ethers.parseUnits(fee, decimals);
+                const feeTransferData = tokenContract.interface.encodeFunctionData('transfer', [relayerAddress, feeInWei]);
+                calls.push({
+                    to: tokenContractAddress,
+                    data: feeTransferData,
+                    value: 0
+                });
+            }
 
             // Encode the execute function call
             const executeData = delegateContract.interface.encodeFunctionData('execute', [calls]);
@@ -599,13 +620,20 @@ class AccountManager {
             await tx.wait();
 
             const explorerLink = `${this.currentExplorerUrl}/tx/${tx.hash}`;
-            this.showSuccessMessage(`Successfully executed gasless transfer of ${amount} tokens to ${recipient}`, explorerLink);
+            let successMessage = `Successfully executed gasless transfer of ${amount} tokens to ${recipient}`;
+            if (fee && parseFloat(fee) > 0) {
+                successMessage += ` with ${fee} token fee to relayer`;
+            }
+            this.showSuccessMessage(successMessage, explorerLink);
             this.transferRecipientInput.value = '';
             this.transferAmountInput.value = '';
+            this.transferFeeInput.value = '';
             this.updateTransferButton();
 
             // Update balances after transfer
             this.updateUserTokenBalance();
+            this.updateRelayerTokenBalance();
+            this.updateUserEthBalance();
 
         } catch (error) {
             console.error('Error executing gasless transfer:', error);
@@ -636,7 +664,7 @@ class AccountManager {
         try {
             const relayerData = localStorage.getItem('relayerAccount');
             if (!relayerData) {
-                this.relayerEthBalance.textContent = 'ETH: No account';
+                this.relayerEthBalance.textContent = 'ETH (Relayer): No account';
                 return;
             }
 
@@ -644,10 +672,60 @@ class AccountManager {
             const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
             const balance = await provider.getBalance(address);
             const ethBalance = ethers.formatEther(balance);
-            this.relayerEthBalance.textContent = `ETH: ${parseFloat(ethBalance).toFixed(4)}`;
+            this.relayerEthBalance.textContent = `ETH (Relayer): ${parseFloat(ethBalance).toFixed(4)}`;
         } catch (error) {
             console.error('Error fetching relayer ETH balance:', error);
-            this.relayerEthBalance.textContent = 'ETH: Error';
+            this.relayerEthBalance.textContent = 'ETH (Relayer): Error';
+        }
+    }
+
+    async updateRelayerTokenBalance() {
+        try {
+            const relayerData = localStorage.getItem('relayerAccount');
+            if (!relayerData) {
+                this.relayerTokenBalance.textContent = 'Tokens (Relayer): No account';
+                return;
+            }
+
+            const { address } = JSON.parse(relayerData);
+            const contractAddress = this.defaultContractAddress.textContent;
+            
+            // Check if contract is deployed
+            const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
+            const code = await provider.getCode(contractAddress);
+            
+            if (code === '0x' || code === '0x0') {
+                this.relayerTokenBalance.textContent = 'Tokens (Relayer): Contract not deployed';
+                return;
+            }
+
+            const contract = new ethers.Contract(contractAddress, this.contractABI, provider);
+            const balance = await contract.balanceOf(address);
+            const decimals = await contract.decimals();
+            const tokenBalance = ethers.formatUnits(balance, decimals);
+            this.relayerTokenBalance.textContent = `Tokens (Relayer): ${parseFloat(tokenBalance).toFixed(2)}`;
+        } catch (error) {
+            console.error('Error fetching relayer token balance:', error);
+            this.relayerTokenBalance.textContent = 'Tokens (Relayer): Error';
+        }
+    }
+
+    async updateUserEthBalance() {
+        try {
+            const userData = localStorage.getItem('userAccount');
+            if (!userData) {
+                this.userEthBalance.textContent = 'ETH (User): No account';
+                return;
+            }
+
+            const { address } = JSON.parse(userData);
+            const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
+            const balance = await provider.getBalance(address);
+            const ethBalance = ethers.formatEther(balance);
+            this.userEthBalance.textContent = `ETH (User): ${parseFloat(ethBalance).toFixed(4)}`;
+        } catch (error) {
+            console.error('Error fetching user ETH balance:', error);
+            this.userEthBalance.textContent = 'ETH (User): Error';
         }
     }
 
@@ -655,7 +733,7 @@ class AccountManager {
         try {
             const userData = localStorage.getItem('userAccount');
             if (!userData) {
-                this.userTokenBalance.textContent = 'Tokens: No account';
+                this.userTokenBalance.textContent = 'Tokens (User): No account';
                 return;
             }
 
@@ -667,7 +745,7 @@ class AccountManager {
             const code = await provider.getCode(contractAddress);
             
             if (code === '0x' || code === '0x0') {
-                this.userTokenBalance.textContent = 'Tokens: Contract not deployed';
+                this.userTokenBalance.textContent = 'Tokens (User): Contract not deployed';
                 return;
             }
 
@@ -675,16 +753,18 @@ class AccountManager {
             const balance = await contract.balanceOf(address);
             const decimals = await contract.decimals();
             const tokenBalance = ethers.formatUnits(balance, decimals);
-            this.userTokenBalance.textContent = `Tokens: ${parseFloat(tokenBalance).toFixed(2)}`;
+            this.userTokenBalance.textContent = `Tokens (User): ${parseFloat(tokenBalance).toFixed(2)}`;
         } catch (error) {
             console.error('Error fetching user token balance:', error);
-            this.userTokenBalance.textContent = 'Tokens: Error';
+            this.userTokenBalance.textContent = 'Tokens (User): Error';
         }
     }
 
     async updateAllBalances() {
         await Promise.all([
             this.updateRelayerEthBalance(),
+            this.updateRelayerTokenBalance(),
+            this.updateUserEthBalance(),
             this.updateUserTokenBalance()
         ]);
     }
@@ -778,7 +858,9 @@ class AccountManager {
         // Update balances when account changes
         if (type === 'relayer') {
             this.updateRelayerEthBalance();
+            this.updateRelayerTokenBalance();
         } else if (type === 'user') {
+            this.updateUserEthBalance();
             this.updateUserTokenBalance();
         }
     }
