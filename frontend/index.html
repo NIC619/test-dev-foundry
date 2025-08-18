@@ -126,15 +126,33 @@
                             <label for="token-decimals">Token Decimals:</label>
                             <input type="number" id="token-decimals" placeholder="18" value="18" min="0" max="18" class="form-input">
                         </div>
-                        <div class="form-group">
-                            <label for="deployer-account">Deployer Account:</label>
-                            <select id="deployer-account" class="form-select">
-                                <option value="">Select an account</option>
-                                <option value="relayer">Relayer Account</option>
-                                <option value="user">User Account</option>
-                            </select>
-                        </div>
                         <button id="deploy-contract" class="btn btn-primary" disabled>Deploy Contract</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SimpleDelegateContract Deployment Section -->
+        <div class="contract-deployment">
+            <h2>SimpleDelegateContract</h2>
+            <div class="deployment-container">
+                <div class="contract-info">
+                    <h3>EIP-7702 Delegation Contract</h3>
+                    <div class="contract-details">
+                        <div class="detail-item">
+                            <label>Default Address:</label>
+                            <span class="contract-address" id="delegate-contract-address">0x22a0691137f5F8cC5586E1819F3389ada1F41CdF</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Status:</label>
+                            <span class="contract-status" id="delegate-contract-status">Checking...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="deployment-actions">
+                    <div class="deployment-form">
+                        <button id="deploy-delegate-contract" class="btn btn-primary" disabled>Deploy SimpleDelegateContract</button>
                     </div>
                 </div>
             </div>
@@ -166,9 +184,9 @@
 
                 <!-- Transfer Section -->
                 <div class="interaction-section">
-                    <h3>Transfer Tokens</h3>
+                    <h3>Gasless Transfer Tokens (EIP-7702)</h3>
                     <div class="interaction-subtitle">
-                        Called by User Account
+                        User delegates, Relayer pays gas
                         <span class="balance-display" id="user-token-balance">Tokens: Loading...</span>
                     </div>
                     <div class="interaction-form">
@@ -180,14 +198,14 @@
                             <label for="transfer-amount">Amount:</label>
                             <input type="number" id="transfer-amount" placeholder="Enter amount" min="0" step="1" class="form-input">
                         </div>
-                        <button id="transfer-tokens" class="btn btn-info" disabled>Transfer Tokens</button>
+                        <button id="transfer-tokens" class="btn btn-info" disabled>Gasless Transfer</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+    <script src="ethers-6.15.0.umd.min.js" type="application/javascript"></script>
     <script src="script.js"></script>
 </body>
 </html>

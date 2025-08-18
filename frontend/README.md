@@ -12,6 +12,7 @@ A simple web application for managing Ethereum EOA (Externally Owned Account) ad
 - **Blockchain Configuration**: Configure RPC and Explorer URLs
 - **Contract Deployment**: Deploy ERC20Mintable contracts to the blockchain
 - **Contract Interactions**: Mint and transfer tokens using the deployed contract
+- **EIP-7702 Gasless Transfers**: User delegates execution to relayer, who pays gas fees
 - **Transaction Explorer Links**: Direct links to view transactions on the blockchain explorer
 - **Real-time Balance Display**: Shows ETH balance for relayer and token balance for user
 - **Persistence**: Accounts, URLs, and deployed contracts are saved in browser localStorage
@@ -92,6 +93,21 @@ The application includes a built-in ERC20Mintable contract deployment feature:
 - **Deployment Tracking**: Stores deployed contract addresses in localStorage
 - **Explorer Links**: Success messages include direct links to view the deployment transaction on the blockchain explorer
 
+## SimpleDelegateContract Deployment
+
+The application includes a SimpleDelegateContract deployment feature for EIP-7702 gasless transfers:
+
+- **Automatic Detection**: Checks if the contract is already deployed at the default address
+- **Smart Deployment**: Only allows deployment if the contract doesn't exist
+- **Account Selection**: Choose which account (relayer/user) to deploy from
+- **Deployment Tracking**: Stores deployed contract addresses in localStorage
+- **Explorer Links**: Success messages include direct links to view the deployment transaction on the blockchain explorer
+
+The SimpleDelegateContract enables EIP-7702 gasless transfers by:
+- Allowing users to delegate execution authority
+- Enabling relayers to execute transactions on behalf of users
+- Supporting batch transaction execution
+
 The ERC20Mintable contract includes:
 - Standard ERC20 functionality (transfer, approve, etc.)
 - Public minting (anyone can mint tokens)
@@ -112,7 +128,9 @@ The application provides two main contract interaction features:
   - Positive amount
 - **Amount Handling**: The input amount is automatically multiplied by the token's decimals (e.g., 1.5 tokens with 18 decimals = 1500000000000000000 wei)
 - **Explorer Links**: Success messages include direct links to view the transaction on the blockchain explorer
-- **Balance Display**: Real-time token balance shown next to "Called by User Account"
+- **Balance Display**: Real-time token balance shown next to "User delegates, Relayer pays gas"
+- **EIP-7702 Delegation**: User signs a delegation allowing the SimpleDelegateContract to execute on their behalf
+- **Gasless Execution**: Relayer pays gas fees while executing the user's token transfer
 - **Balance Display**: Real-time ETH balance shown next to "Called by Relayer Account"
 
 ### Transfer Tokens
