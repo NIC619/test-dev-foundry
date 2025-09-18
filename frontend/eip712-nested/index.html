@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>EIP-712 Nested Signer</title>
+	<link rel="stylesheet" href="./styles.css">
+	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📝</text></svg>">
+</head>
+<body>
+	<div class="container">
+		<h1>EIP-712 Nested Message Signer</h1>
+
+		<div class="card">
+			<h2>Wallet</h2>
+			<div class="row">
+				<button id="connectBtn">Connect MetaMask</button>
+				<div class="muted" id="accountDisplay">Not connected</div>
+			</div>
+		</div>
+
+		<div class="card">
+			<h2>Domain (EIP-712)</h2>
+			<div class="grid grid-3">
+				<label>
+					<span>Name</span>
+					<input type="text" id="domainName" placeholder="Nested712Demo" value="Nested712Demo">
+				</label>
+				<label>
+					<span>Version</span>
+					<input type="text" id="domainVersion" placeholder="1" value="1">
+				</label>
+				<label>
+					<span>Verifying Contract (optional)</span>
+					<input type="text" id="verifyingContract" placeholder="0x...">
+				</label>
+			</div>
+			<div class="grid grid-2">
+				<label>
+					<span>Chain ID (auto)</span>
+					<input type="text" id="chainId" disabled>
+				</label>
+				<label>
+					<span>Primary Type</span>
+					<input type="text" id="primaryType" value="NestedMessage">
+				</label>
+			</div>
+		</div>
+
+		<div class="card">
+			<h2>Message</h2>
+			<div class="grid grid-2">
+				<label>
+					<span>User Account Address</span>
+					<input type="text" id="userAccountAddress" placeholder="0x...">
+				</label>
+				<label>
+					<span>Expiry (unix, seconds)</span>
+					<input type="number" id="expiry" placeholder="e.g. 1893456000">
+				</label>
+			</div>
+
+			<h3>Calls</h3>
+			<div id="callsContainer"></div>
+			<div class="row">
+				<button id="addCallBtn" class="secondary">+ Add Call</button>
+			</div>
+		</div>
+
+		<div class="actions">
+			<button id="signBtn">Sign with MetaMask</button>
+		</div>
+
+		<div class="card">
+			<h2>Preview</h2>
+			<div class="grid grid-2">
+				<label>
+					<span>Typed Data (eth_signTypedData_v4)</span>
+					<textarea id="typedDataPreview" rows="14" readonly></textarea>
+				</label>
+				<label>
+					<span>Signature</span>
+					<textarea id="signatureOutput" rows="14" readonly></textarea>
+				</label>
+			</div>
+			<div id="errorOutput" class="error"></div>
+		</div>
+	</div>
+
+	<script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+	<script src="./script.js"></script>
+</body>
+</html>

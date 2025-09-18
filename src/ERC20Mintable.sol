@@ -9,17 +9,14 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  * Anyone can mint tokens at will.
  */
 contract ERC20Mintable is ERC20 {
-    uint8 immutable private _decimals;
+    uint8 private immutable _decimals;
     /**
      * @dev Constructor that sets up the token with name and symbol.
      * @param name_ The name of the token
      * @param symbol_ The symbol of the token
      */
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint8 decimals_
-    ) ERC20(name_, symbol_) {
+
+    constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) {
         _decimals = decimals_;
     }
 
@@ -43,15 +40,9 @@ contract ERC20Mintable is ERC20 {
      * @param recipients Array of addresses to mint tokens to
      * @param amounts Array of amounts to mint to each recipient
      */
-    function mintBatch(
-        address[] calldata recipients,
-        uint256[] calldata amounts
-    ) public {
-        require(
-            recipients.length == amounts.length,
-            "ERC20Mintable: arrays length mismatch"
-        );
-        
+    function mintBatch(address[] calldata recipients, uint256[] calldata amounts) public {
+        require(recipients.length == amounts.length, "ERC20Mintable: arrays length mismatch");
+
         for (uint256 i = 0; i < recipients.length; i++) {
             _mint(recipients[i], amounts[i]);
         }
