@@ -93,7 +93,9 @@ contract SimpleDelegateContract {
             keccak256("SimpleDelegateContract"),
             keccak256("1"),
             block.chainid,
-            address(this)
+            // We can not use `address(this)` as the `verifyingContract` as Metamask does not allow signing an EIP-712 message with an account itself as the verifying contract but this would be the case when the account has delegated to this `SimpleDelegateContract`.
+            // address(this)
+            address(0xf6465b4C05C1a3a04E5cBCF623741b087eB965C7)
         ));
     }
 

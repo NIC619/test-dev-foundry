@@ -5,11 +5,14 @@ class EIP712TransferManager {
         
         // Default private keys
         this.defaultRelayerPrivateKey = '0x7bf22e1815f25b864be82bb9cad2f6b51a108cd25b90e7de3f05c3ccf16341d8';
-        this.defaultUserPrivateKey = '0xdada0c233671b034b77b638fa29b745133853edd3c4dbedf3273e726b7bb6afc';
+        this.defaultUserPrivateKey = '0xe47670a42e1a2efd676e315f39d853cd388cb99bc2f97f3a394627fbf240db06';
         
         // Contract addresses
-        this.defaultContractAddress = '0x8A4BC9B8e31bc6B144fD1068581dc0FC2A7885e7';
-        this.defaultDelegateContractAddress = '0xf6465b4C05C1a3a04E5cBCF623741b087eB965C7';
+        this.defaultContractAddress = '0xa1706a87F06d4F0F379A9123e41672924B654550';
+        this.defaultDelegateContractAddress = '0x8052A771FbeDa789Fb0384040773E6F0b734f244';
+        
+        // Cache for token decimals
+        this.tokenDecimals = null;
         
         this.initializeElements();
         this.bindEvents();
@@ -59,8 +62,9 @@ class EIP712TransferManager {
         this.userTokenBalance = document.getElementById('user-token-balance');
         this.relayerTokenBalance = document.getElementById('relayer-token-balance');
 
-        // Single action button
+        // Action buttons
         this.submitTransferBtn = document.getElementById('submit-transfer');
+        this.connectMetaMaskBtn = document.getElementById('connect-metamask');
     }
 
     bindEvents() {
@@ -101,7 +105,8 @@ class EIP712TransferManager {
             input.addEventListener('input', async () => await this.updateTransferButtonState());
         });
 
-        // Single Transfer action
+        // Action buttons
+        this.connectMetaMaskBtn.addEventListener('click', () => this.connectMetaMask());
         this.submitTransferBtn.addEventListener('click', () => this.handleTransfer());
     }
 
@@ -352,8 +357,9 @@ class EIP712TransferManager {
                 connectedWallet
             );
 
-            // Convert amount to wei (assuming 18 decimals)
-            const amountWei = ethers.parseUnits(amount, 18);
+            // Get token decimals and convert amount
+            const tokenDecimals = await this.getTokenDecimals();
+            const amountWei = ethers.parseUnits(amount, tokenDecimals);
 
             // Mint tokens
             const tx = await contract.mint(recipient, amountWei);
@@ -374,15 +380,12 @@ class EIP712TransferManager {
         }
     }
 
-    async checkUserDelegation() {
+    async checkUserDelegation(userAddress) {
         try {
-            const userData = localStorage.getItem('userAccount');
-            if (!userData) {
+            if (!userAddress) {
                 return false;
             }
 
-            const userAccountData = JSON.parse(userData);
-            const userAddress = userAccountData.address;
             const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
 
             // Check if user account is delegated
@@ -407,20 +410,15 @@ class EIP712TransferManager {
         }
     }
 
-    async buildTypedData() {
-        const userData = localStorage.getItem('userAccount');
-        if (!userData) {
-            throw new Error('User account not found');
-        }
-
-        const userAccountData = JSON.parse(userData);
-        const userAddress = userAccountData.address;
-
+    async buildTypedData(userAddress) {
         const recipient = this.transferRecipientInput.value.trim();
         const amountInput = this.transferAmountInput.value.trim();
         const feeInput = this.transferFeeInput.value.trim();
-        const amount = amountInput ? ethers.parseUnits(amountInput, 18) : 0n;
-        const fee = feeInput ? ethers.parseUnits(feeInput, 18) : 0n;
+        
+        // Get token decimals
+        const tokenDecimals = await this.getTokenDecimals();
+        const amount = amountInput ? ethers.parseUnits(amountInput, tokenDecimals) : 0n;
+        const fee = feeInput ? ethers.parseUnits(feeInput, tokenDecimals) : 0n;
 
         const contractAddress = this.defaultContractAddressDisplay.textContent.trim();
 
@@ -467,7 +465,7 @@ class EIP712TransferManager {
             calls: calls
         };
 
-        return { domain, types, message };
+        return { domain, types, message, primaryType: 'ExecuteWithSigMessage' };
     }
 
     encodeTransferData(to, amount) {
@@ -486,32 +484,139 @@ class EIP712TransferManager {
         return accountData.address;
     }
 
+    async getTokenDecimals() {
+        // Return cached value if available
+        if (this.tokenDecimals !== null) {
+            return this.tokenDecimals;
+        }
+
+        try {
+            const contractAddress = this.defaultContractAddressDisplay.textContent.trim();
+            const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
+            
+            const contract = new ethers.Contract(
+                contractAddress,
+                [
+                    "function decimals() public view returns (uint8)"
+                ],
+                provider
+            );
+
+            const decimals = await contract.decimals();
+            // Cache the result
+            this.tokenDecimals = decimals;
+            return decimals;
+        } catch (error) {
+            console.error('Error getting token decimals:', error);
+            // Fallback to 18 decimals if contract call fails
+            this.tokenDecimals = 18;
+            return 18;
+        }
+    }
+
+    async connectMetaMask() {
+        try {
+            this.connectMetaMaskBtn.disabled = true;
+            this.connectMetaMaskBtn.textContent = 'Connecting...';
+
+            if (!window.ethereum) {
+                this.showErrorMessage('MetaMask not detected. Please install/enable MetaMask.');
+                return;
+            }
+
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            if (!accounts || accounts.length === 0) {
+                this.showErrorMessage('No MetaMask account connected. Please connect your account.');
+                return;
+            }
+
+            const userAddress = accounts[0];
+            this.showSuccessMessage(`Connected to MetaMask account: ${userAddress}`);
+            
+            // Store connected account
+            this.connectedMetaMaskAccount = userAddress;
+            this.connectMetaMaskBtn.textContent = `Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+            this.connectMetaMaskBtn.disabled = true;
+
+        } catch (error) {
+            console.error('Error connecting MetaMask:', error);
+            if (error.code === 4001) {
+                this.showErrorMessage('User rejected the connection request in MetaMask.');
+            } else {
+                this.showErrorMessage(`Failed to connect MetaMask: ${error.message}`);
+            }
+        } finally {
+            if (!this.connectedMetaMaskAccount) {
+                this.connectMetaMaskBtn.disabled = false;
+                this.connectMetaMaskBtn.textContent = 'Connect MetaMask';
+            }
+        }
+    }
+
     async handleTransfer() {
         try {
             this.submitTransferBtn.disabled = true;
             this.submitTransferBtn.textContent = 'Transferring...';
 
+            // Check if MetaMask is connected
+            if (!this.connectedMetaMaskAccount) {
+                this.showErrorMessage('Please connect MetaMask first by clicking the Connect MetaMask button.');
+                return;
+            }
+
+            const userAddress = this.connectedMetaMaskAccount;
+
             // Ensure delegation
-            const isDelegated = await this.checkUserDelegation();
+            const isDelegated = await this.checkUserDelegation(userAddress);
             if (!isDelegated) {
                 this.showErrorMessage('User account is not delegated to SimpleDelegateContract. Please delegate the account first.');
                 return;
             }
 
-            // Build typed data
-            const typedData = await this.buildTypedData();
+            // Build typed data with MetaMask account
+            const typedData = await this.buildTypedData(userAddress);
+            console.log(typedData);
 
-            // User signs
-            const userData = localStorage.getItem('userAccount');
-            const { privateKey: userPrivateKey, address: userAddress } = JSON.parse(userData);
+            // Sign with MetaMask (following working example pattern)
+            this.submitTransferBtn.textContent = 'Please sign in MetaMask...';
+            const params = [
+                userAddress,
+                JSON.stringify({
+                    domain: typedData.domain,
+                    message: typedData.message,
+                    primaryType: typedData.primaryType,
+                    types: typedData.types,
+                })
+            ];
+            
+            const signature = await window.ethereum.request({
+                method: 'eth_signTypedData_v4',
+                params
+            });
+
+            const sig = ethers.Signature.from(signature);
             const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
+            
+            // Compare with local private key signing
+            this.submitTransferBtn.textContent = 'Comparing signatures...';
+            
+            // FIXME: Signature generated by MetaMask's `eth_signTypedData_v4` can not be verified onchain while the embedded private key can
+            // Get user's private key from localStorage
+            const userData = localStorage.getItem('userAccount');
+            const { privateKey: userPrivateKey, address: userAddressLocal } = JSON.parse(userData);
+            // const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
             const userWallet = new ethers.Wallet(userPrivateKey, provider);
-            const signature = await userWallet.signTypedData(
+            const signatureLocal = await userWallet.signTypedData(
                 typedData.domain,
                 typedData.types,
                 typedData.message
             );
-            const sig = ethers.Signature.from(signature);
+            const sigLocal = ethers.Signature.from(signatureLocal);
+
+            // console.log(sigLocal);
+            // await this.verifySignature(userAddressLocal, typedData, signatureLocal);
+            // console.log(sig);
+            // await this.verifySignature(userAddress, typedData, signature);
 
             // Relayer executes
             const relayerData = localStorage.getItem('relayerAccount');
@@ -532,9 +637,13 @@ class EIP712TransferManager {
 
             const tx = await contract.executeWithSig(
                 typedData.message,
-                sig.v,
-                sig.r,
-                sig.s
+                // use the signature generated by the embedded private key instead
+                // sig.v,
+                // sig.r,
+                // sig.s
+                sigLocal.v,
+                sigLocal.r,
+                sigLocal.s
             );
             await tx.wait();
 
@@ -544,39 +653,43 @@ class EIP712TransferManager {
 
         } catch (error) {
             console.error('Error executing transfer:', error);
-            this.showErrorMessage(`Failed to execute transfer: ${error.message}`);
+            if (error.code === 4001) {
+                this.showErrorMessage('User rejected the signature request in MetaMask.');
+            } else {
+                this.showErrorMessage(`Failed to execute transfer: ${error.message}`);
+            }
         } finally {
             this.submitTransferBtn.disabled = false;
             this.submitTransferBtn.textContent = 'Transfer';
         }
     }
 
-    async verifySignature() {
+    async verifySignature(userAddress, typedData, signature) {
         try {
-            this.verifySignatureBtn.disabled = true;
-            this.verifySignatureBtn.textContent = 'Verifying...';
+            // this.verifySignatureBtn.disabled = true;
+            // this.verifySignatureBtn.textContent = 'Verifying...';
 
-            const signature = this.signatureOutput.value.trim();
-            if (!signature) {
-                this.showErrorMessage('No signature to verify');
-                return;
-            }
+            // const signature = this.signatureOutput.value.trim();
+            // if (!signature) {
+            //     this.showErrorMessage('No signature to verify');
+            //     return;
+            // }
 
             // Get the typed data from preview
-            const typedData = JSON.parse(this.eip712Preview.value);
+            // const typedData = JSON.parse(this.eip712Preview.value);
 
             // Parse signature
             const sig = ethers.Signature.from(signature);
 
-            // Get user account address (the delegated account)
-            const userData = localStorage.getItem('userAccount');
-            if (!userData) {
-                this.showErrorMessage('User account not found');
-                return;
-            }
+            // // Get user account address (the delegated account)
+            // const userData = localStorage.getItem('userAccount');
+            // if (!userData) {
+            //     this.showErrorMessage('User account not found');
+            //     return;
+            // }
 
-            const userAccountData = JSON.parse(userData);
-            const userAddress = userAccountData.address;
+            // const userAccountData = JSON.parse(userData);
+            // const userAddress = userAccountData.address;
             const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
             
             const contract = new ethers.Contract(
@@ -598,36 +711,36 @@ class EIP712TransferManager {
             const [signer, isValid] = result;
 
             if (isValid) {
-                this.verificationResult.innerHTML = `
-                    <div class="verification-success">
-                        ✅ Signature is valid!<br>
-                        Signer: ${signer}<br>
-                        Ready to execute transfer.
-                    </div>
-                `;
+                // this.verificationResult.innerHTML = `
+                //     <div class="verification-success">
+                //         ✅ Signature is valid!<br>
+                //         Signer: ${signer}<br>
+                //         Ready to execute transfer.
+                //     </div>
+                // `;
                 this.showSuccessMessage('Signature verification successful!');
             } else {
-                this.verificationResult.innerHTML = `
-                    <div class="verification-error">
-                        ❌ Signature is invalid!<br>
-                        Signer: ${signer}<br>
-                        Expected: ${typedData.message.userAccountAddress}
-                    </div>
-                `;
+                // this.verificationResult.innerHTML = `
+                //     <div class="verification-error">
+                //         ❌ Signature is invalid!<br>
+                //         Signer: ${signer}<br>
+                //         Expected: ${typedData.message.userAccountAddress}
+                //     </div>
+                // `;
                 this.showErrorMessage('Signature verification failed!');
             }
 
         } catch (error) {
             console.error('Error verifying signature:', error);
-            this.verificationResult.innerHTML = `
-                <div class="verification-error">
-                    ❌ Verification error: ${error.message}
-                </div>
-            `;
+            // this.verificationResult.innerHTML = `
+            //     <div class="verification-error">
+            //         ❌ Verification error: ${error.message}
+            //     </div>
+            // `;
             this.showErrorMessage(`Failed to verify signature: ${error.message}`);
         } finally {
-            this.verifySignatureBtn.disabled = false;
-            this.verifySignatureBtn.textContent = 'Verify Signature';
+            // this.verifySignatureBtn.disabled = false;
+            // this.verifySignatureBtn.textContent = 'Verify Signature';
         }
     }
 
@@ -729,13 +842,13 @@ class EIP712TransferManager {
             if (userData) {
                 const userAccountData = JSON.parse(userData);
                 const userBalance = await contract.balanceOf(userAccountData.address);
-                this.userTokenBalance.textContent = `Tokens (User): ${this.formatTokenAmount(userBalance)}`;
+                this.userTokenBalance.textContent = `Tokens (User): ${await this.formatTokenAmount(userBalance)}`;
             }
 
             if (relayerData) {
                 const relayerAccountData = JSON.parse(relayerData);
                 const relayerBalance = await contract.balanceOf(relayerAccountData.address);
-                this.relayerTokenBalance.textContent = `Tokens (Relayer): ${this.formatTokenAmount(relayerBalance)}`;
+                this.relayerTokenBalance.textContent = `Tokens (Relayer): ${await this.formatTokenAmount(relayerBalance)}`;
             }
 
         } catch (error) {
@@ -745,9 +858,10 @@ class EIP712TransferManager {
         }
     }
 
-    formatTokenAmount(amount) {
+    async formatTokenAmount(amount) {
         try {
-            const full = ethers.formatUnits(amount, 18);
+            const tokenDecimals = await this.getTokenDecimals();
+            const full = ethers.formatUnits(amount, tokenDecimals);
             if (!full.includes('.')) return full;
             const [intPart, fracPart] = full.split('.');
             const sliced = fracPart.slice(0, 2);
@@ -903,4 +1017,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     eip712TransferManager.initializeBlockchainConfig();
     await eip712TransferManager.loadSavedAccounts();
     eip712TransferManager.checkContractStatus();
+    // Initialize token decimals cache
+    await eip712TransferManager.getTokenDecimals();
 });

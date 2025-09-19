@@ -38,9 +38,10 @@
                 </div>
             </div>
 
-            <!-- User Account Section -->
+            <!-- User Account Section - Hidden since we use MetaMask -->
+            <!-- <div class="account-section hidden"> -->
             <div class="account-section">
-                <h2>User Account</h2>
+                    <h2>User Account</h2>
                 <div class="account-subtitle">Default account loaded automatically</div>
                 <div id="user-input-section" class="input-section">
                     <input type="text" id="user-private-key" placeholder="Enter private key (0x...)" class="private-key-input">
@@ -106,7 +107,7 @@
                     <div class="contract-details">
                         <div class="detail-item">
                             <label>Contract Address:</label>
-                            <span class="contract-address" id="default-contract-address">0x8A4BC9B8e31bc6B144fD1068581dc0FC2A7885e7</span>
+                            <span class="contract-address" id="default-contract-address">0xa1706a87F06d4F0F379A9123e41672924B654550</span>
                         </div>
                         <div class="detail-item">
                             <label>Status:</label>
@@ -161,6 +162,7 @@
                             <input type="number" id="transfer-fee" placeholder="Enter fee amount" min="0" step="0.001" class="form-input">
                         </div>
                         <div class="button-group">
+                            <button id="connect-metamask" class="btn btn-primary">Connect MetaMask</button>
                             <button id="submit-transfer" class="btn btn-success" disabled>Transfer</button>
                         </div>
                     </div>

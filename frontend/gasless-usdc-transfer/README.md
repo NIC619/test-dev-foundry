@@ -1,9 +1,10 @@
 # Gasless USDC Transfer with EIP-7702
 
-A simple web application for managing Ethereum EOA (Externally Owned Account) addresses for `relayer` and `user` accounts.
+A comprehensive web application for gasless token transfers using EIP-7702 delegation and EIP-712 signatures. Includes two demos: a full-featured version (`index.html`) and a simplified EIP-712 transfer demo (`eip712-transfer.html`).
 
 ## Features
 
+### Full Demo (`index.html`)
 - **Default Accounts**: Pre-configured relayer and user accounts loaded automatically
 - **Account Generation**: Generate random Ethereum accounts with private keys
 - **Account Import**: Import existing accounts using private keys
@@ -18,8 +19,17 @@ A simple web application for managing Ethereum EOA (Externally Owned Account) ad
 - **Persistence**: Accounts, URLs, and deployed contracts are saved in browser localStorage
 - **Responsive Design**: Works on desktop and mobile devices
 
+### Simplified EIP-712 Demo (`eip712-transfer.html`)
+- **MetaMask Integration**: Connect and sign with MetaMask wallet
+- **Simplified UI**: Clean interface focused on gasless transfers
+- **EIP-712 Signing**: Uses EIP-712 typed data signing for secure transactions
+- **Token Decimals Support**: Automatically detects and uses correct token decimals
+- **Real-time Balance Display**: Shows user and relayer token balances
+- **Gasless Transfer Flow**: One-click transfer with MetaMask signing
+
 ## How to Use
 
+### Full Demo (`index.html`)
 1. **Open the Application**: Open `index.html` in your web browser
 2. **Default Accounts**: Default relayer and user accounts are loaded automatically
 3. **Edit Accounts**: Click "Edit Account" to modify the current account or import/generate a new one
@@ -31,6 +41,13 @@ A simple web application for managing Ethereum EOA (Externally Owned Account) ad
 9. **Deploy Contract**: Fill in token details and deploy ERC20Mintable contract if not already deployed
 10. **Mint Tokens**: Use the relayer account to mint tokens to any address
 11. **Transfer Tokens**: Use the user account to transfer tokens to other addresses
+
+### Simplified EIP-712 Demo (`eip712-transfer.html`)
+1. **Open the Demo**: Open `eip712-transfer.html` in your web browser
+2. **Connect MetaMask**: Click "Connect MetaMask" to connect your wallet
+3. **Fill Transfer Details**: Enter recipient address, amount, and optional fee
+4. **Execute Transfer**: Click "Transfer" to sign with MetaMask and execute gasless transfer
+5. **View Results**: Check transaction on explorer and updated balances
 
 ## Private Key Format
 
@@ -47,6 +64,15 @@ Private keys should be 64-character hexadecimal strings. You can include the `0x
 - This is intended for development and testing purposes only
 - Always use a hardware wallet or secure wallet for real transactions
 
+## MetaMask EIP-712 Signing Limitations
+
+⚠️ **MetaMask Signing Issues**:
+- **VerifyingContract Restriction**: MetaMask blocks EIP-712 signatures when `verifyingContract` is set to an EOA (Externally Owned Account) address for security reasons
+- **EIP-7702 Delegation Conflict**: When using EIP-7702 delegation, the user's account is delegated to a contract, but MetaMask still sees it as an EOA and blocks the signature
+- **Current Workaround**: The simplified demo (`eip712-transfer.html`) still uses embedded private keys for signing as MetaMask cannot produce verifiable signatures for this use case
+- **Domain Structure**: We use a domain without `verifyingContract` to avoid MetaMask restrictions, but this requires contract modifications
+- **Future Solutions**: Consider using wallet connect or other signing methods that don't have these restrictions
+
 ## Technical Details
 
 - Uses [ethers.js](https://docs.ethers.io/) for Ethereum account operations (bundled locally)
@@ -60,10 +86,12 @@ Private keys should be 64-character hexadecimal strings. You can include the `0x
 
 ```
 frontend/
-├── index.html                    # Main HTML file
+├── index.html                    # Full-featured demo with account management
+├── eip712-transfer.html          # Simplified EIP-712 transfer demo
 ├── styles.css                    # CSS styles
-├── script.js                     # JavaScript functionality
-├── ethers-5.7.2.umd.min.js      # Local ethers.js library
+├── script.js                     # JavaScript functionality for full demo
+├── eip712-transfer.js            # JavaScript functionality for EIP-712 demo
+├── ethers-6.15.0.umd.min.js     # Local ethers.js v6 library
 └── README.md                     # This file
 ```
 
@@ -79,6 +107,7 @@ The application comes with default UniFi testnet URLs and accounts:
 ### Default Accounts
 - **Relayer Account**: `0x7bf22e1815f25b864be82bb9cad2f6b51a108cd25b90e7de3f05c3ccf16341d8`
 - **User Account**: `0xdada0c233671b034b77b638fa29b745133853edd3c4dbedf3273e726b7bb6afc`
+- **SimpleDelegateContract**: `0x8052A771FbeDa789Fb0384040773E6F0b734f244`
 
 These defaults are loaded automatically when the application starts, but users can still import custom accounts or generate new ones.
 
@@ -155,10 +184,17 @@ The application provides two main contract interaction features:
 
 To modify or extend this application:
 
+### Full Demo (`index.html`)
 1. Edit the HTML structure in `index.html`
 2. Modify styles in `styles.css`
 3. Update functionality in `script.js`
 4. The application uses the `AccountManager` class for all operations
+
+### EIP-712 Demo (`eip712-transfer.html`)
+1. Edit the HTML structure in `eip712-transfer.html`
+2. Modify styles in `styles.css`
+3. Update functionality in `eip712-transfer.js`
+4. The application uses the `EIP712TransferManager` class for all operations
 
 ## License
 
