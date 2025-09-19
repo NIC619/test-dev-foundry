@@ -1,0 +1,673 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    max-width: 1000px;
+    width: 100%;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 40px;
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.accounts-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.account-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 24px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.account-section:hover {
+    border-color: #667eea;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.account-section h2 {
+    color: #495057;
+    margin-bottom: 8px;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.account-subtitle {
+    color: #6c757d;
+    font-size: 12px;
+    margin-bottom: 20px;
+    font-style: italic;
+}
+
+.input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.private-key-input {
+    padding: 12px 16px;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    transition: border-color 0.3s ease;
+}
+
+.private-key-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.button-group {
+    display: flex;
+    gap: 12px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex: 1;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5a6fd8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.btn-reset {
+    background: #dc3545;
+    color: white;
+    flex: 1;
+}
+
+.btn-reset:hover {
+    background: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.account-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.btn-edit {
+    background: #17a2b8;
+    color: white;
+    flex: 1;
+}
+
+.btn-edit:hover {
+    background: #138496;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+
+.display-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.account-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.account-info label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+}
+
+.address-display {
+    background: #e9ecef;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    color: #495057;
+    word-break: break-all;
+    border: 2px solid #dee2e6;
+}
+
+.private-key-display {
+    background: #fff3cd;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    color: #856404;
+    word-break: break-all;
+    border: 2px solid #ffeaa7;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.private-key-display:hover {
+    background: #ffeaa7;
+}
+
+.private-key-display::after {
+    content: "Click to copy";
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    font-size: 10px;
+    color: #6c757d;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.private-key-display:hover::after {
+    opacity: 1;
+}
+
+.account-type-indicator {
+    margin-top: 8px;
+}
+
+.account-type {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.account-type.default {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.account-type.custom {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .accounts-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .container {
+        padding: 20px;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    .button-group {
+        flex-direction: column;
+    }
+}
+
+/* Animation for smooth transitions */
+.input-section, .display-section {
+    transition: all 0.3s ease;
+}
+
+/* Success state styling */
+.account-section.success {
+    border-color: #28a745;
+    background: #f8fff9;
+}
+
+.account-section.success h2 {
+    color: #28a745;
+}
+
+/* Blockchain Configuration Styles */
+.blockchain-config {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid #e9ecef;
+}
+
+.blockchain-config h2 {
+    color: #495057;
+    margin-bottom: 24px;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.config-item {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.config-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.config-item label {
+    display: block;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.url-input-group {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.url-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    transition: border-color 0.3s ease;
+}
+
+.url-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-small {
+    padding: 10px 16px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.url-display {
+    background: #e9ecef;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 2px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.url-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.url-value {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    color: #495057;
+    word-break: break-all;
+    line-height: 1.4;
+}
+
+/* Responsive design for blockchain config */
+@media (max-width: 768px) {
+    .config-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .url-input-group {
+        flex-direction: column;
+    }
+    
+    .btn-small {
+        width: 100%;
+    }
+}
+
+/* Contract Deployment Styles */
+.contract-deployment {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid #e9ecef;
+}
+
+.contract-deployment h2 {
+    color: #495057;
+    margin-bottom: 24px;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.deployment-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.contract-info {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 24px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.contract-info:hover {
+    border-color: #667eea;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.contract-info h3 {
+    color: #495057;
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.contract-details {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.detail-item label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+}
+
+.contract-address {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    color: #495057;
+    background: #e9ecef;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    word-break: break-all;
+}
+
+.contract-status {
+    font-weight: 600;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.contract-status.checking {
+    background: #fff3cd;
+    color: #856404;
+    border-color: #ffeaa7;
+}
+
+.contract-status.deployed {
+    background: #d4edda;
+    color: #155724;
+    border-color: #c3e6cb;
+}
+
+.contract-status.not-deployed {
+    background: #f8d7da;
+    color: #721c24;
+    border-color: #f5c6cb;
+}
+
+.deployment-actions {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 24px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.deployment-actions:hover {
+    border-color: #667eea;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.deployment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+}
+
+.form-input, .form-select {
+    padding: 10px 14px;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.deployer-info {
+    padding: 10px 14px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #f8f9fa;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.form-input[type="number"] {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* Responsive design for contract deployment */
+@media (max-width: 768px) {
+    .deployment-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+/* Contract Interactions Styles */
+.contract-interactions {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid #e9ecef;
+}
+
+.contract-interactions h2 {
+    color: #495057;
+    margin-bottom: 24px;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.interactions-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.interaction-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 24px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.interaction-section:hover {
+    border-color: #667eea;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.interaction-section h3 {
+    color: #495057;
+    margin-bottom: 8px;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.interaction-subtitle {
+    color: #6c757d;
+    font-size: 12px;
+    margin-bottom: 20px;
+    font-style: italic;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.balance-display {
+    font-weight: 600;
+    color: #495057;
+    font-size: 11px;
+    background: #e9ecef;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.interaction-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.btn-info {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-info:hover {
+    background: #138496;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+
+/* Responsive design for contract interactions */
+@media (max-width: 768px) {
+    .interactions-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+/* Explorer link styles */
+.explorer-link {
+    color: white !important;
+    text-decoration: underline !important;
+    margin-left: 8px !important;
+    font-weight: 500 !important;
+    transition: opacity 0.2s ease !important;
+}
+
+.explorer-link:hover {
+    opacity: 0.8 !important;
+}
+
+/* Message popup responsive styles */
+@media (max-width: 480px) {
+    .message {
+        max-width: calc(100vw - 40px) !important;
+        right: 20px !important;
+        left: 20px !important;
+        font-size: 14px !important;
+    }
+}

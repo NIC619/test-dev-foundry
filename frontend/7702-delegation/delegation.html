@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EIP-7702 Account Delegation</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🔗</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>EIP-7702 Account Delegation</h1>
+        
+        <div class="accounts-container">
+            <!-- Relayer Account Section -->
+            <div class="account-section">
+                <h2>Relayer Account</h2>
+                <div class="account-subtitle">Default account loaded automatically</div>
+                <div id="relayer-input-section" class="input-section">
+                    <input type="text" id="relayer-private-key" placeholder="Enter private key (0x...)" class="private-key-input">
+                    <div class="button-group">
+                        <button id="relayer-import" class="btn btn-primary">Import</button>
+                        <button id="relayer-generate" class="btn btn-secondary">Generate</button>
+                    </div>
+                </div>
+                <div id="relayer-display-section" class="display-section hidden">
+                    <div class="account-info">
+                        <label>Address:</label>
+                        <div id="relayer-address" class="address-display"></div>
+                        <div class="account-type-indicator">
+                            <span class="account-type default">Default Account</span>
+                        </div>
+                        <div class="account-actions">
+                            <button id="relayer-reset" class="btn btn-reset">Reset to Default</button>
+                            <button id="relayer-edit" class="btn btn-edit">Edit Account</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Account Section -->
+            <div class="account-section">
+                <h2>User Account</h2>
+                <div class="account-subtitle">Default account loaded automatically</div>
+                <div id="user-input-section" class="input-section">
+                    <input type="text" id="user-private-key" placeholder="Enter private key (0x...)" class="private-key-input">
+                    <div class="button-group">
+                        <button id="user-import" class="btn btn-primary">Import</button>
+                        <button id="user-generate" class="btn btn-secondary">Generate</button>
+                    </div>
+                </div>
+                <div id="user-display-section" class="display-section hidden">
+                    <div class="account-info">
+                        <label>Address:</label>
+                        <div id="user-address" class="address-display"></div>
+                        <label>Private Key:</label>
+                        <div id="user-private-key-display" class="private-key-display"></div>
+                        <div class="account-type-indicator">
+                            <span class="account-type default">Default Account</span>
+                        </div>
+                        <div class="account-actions">
+                            <button id="user-reset" class="btn btn-reset">Reset to Default</button>
+                            <button id="user-edit" class="btn btn-edit">Edit Account</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Blockchain Configuration Section -->
+        <div class="blockchain-config">
+            <h2>Blockchain Configuration</h2>
+            <div class="config-grid">
+                <div class="config-item">
+                    <label for="rpc-url">RPC URL:</label>
+                    <div class="url-input-group">
+                        <input type="url" id="rpc-url" placeholder="Enter RPC URL" class="url-input">
+                        <button id="rpc-reset" class="btn btn-small">Reset to Default</button>
+                    </div>
+                    <div class="url-display" id="rpc-display">
+                        <span class="url-label">Current RPC URL:</span>
+                        <span class="url-value" id="rpc-url-value"></span>
+                    </div>
+                </div>
+
+                <div class="config-item">
+                    <label for="explorer-url">Explorer URL:</label>
+                    <div class="url-input-group">
+                        <input type="url" id="explorer-url" placeholder="Enter Explorer URL" class="url-input">
+                        <button id="explorer-reset" class="btn btn-small">Reset to Default</button>
+                    </div>
+                    <div class="url-display" id="explorer-display">
+                        <span class="url-label">Current Explorer URL:</span>
+                        <span class="url-value" id="explorer-url-value"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SimpleDelegateContract Deployment Section -->
+        <div class="contract-deployment">
+            <h2>SimpleDelegateContract</h2>
+            <div class="deployment-container">
+                <div class="contract-info">
+                    <h3>EIP-7702 Delegation Contract</h3>
+                    <div class="contract-details">
+                        <div class="detail-item">
+                            <label>Default Address:</label>
+                            <span class="contract-address" id="delegate-contract-address">0x22a0691137f5F8cC5586E1819F3389ada1F41CdF</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Status:</label>
+                            <span class="contract-status" id="delegate-contract-status">Checking...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="deployment-actions">
+                    <div class="deployment-form">
+                        <button id="deploy-delegate-contract" class="btn btn-primary" disabled>Deploy SimpleDelegateContract</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EIP-7702 Delegation Section -->
+        <div class="contract-deployment">
+            <h2>EIP-7702 Account Delegation</h2>
+            <div class="deployment-container">
+                <div class="contract-info">
+                    <h3>Delegate Account to Contract</h3>
+                    <div class="contract-details">
+                        <div class="detail-item">
+                            <label>Delegation Status:</label>
+                            <span class="contract-status" id="delegation-status">Not Delegated</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Description:</label>
+                            <span class="delegation-description">Set account code to SimpleDelegateContract for gasless transactions. Delegation can be revoked by setting code to 0x.</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="deployment-actions">
+                    <div class="deployment-form">
+                        <div class="button-group">
+                            <button id="delegate-account" class="btn btn-primary" disabled>Delegate Account</button>
+                            <button id="revoke-delegation" class="btn btn-danger" disabled>Revoke Delegation</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="ethers-6.15.0.umd.min.js"></script>
+    <script src="delegation.js"></script>
+</body>
+</html>
