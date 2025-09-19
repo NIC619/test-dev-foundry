@@ -182,6 +182,39 @@ h1 {
     border: 2px solid #dee2e6;
 }
 
+.private-key-display {
+    background: #fff3cd;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    color: #856404;
+    word-break: break-all;
+    border: 2px solid #ffeaa7;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.private-key-display:hover {
+    background: #ffeaa7;
+}
+
+.private-key-display::after {
+    content: "Click to copy";
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    font-size: 10px;
+    color: #6c757d;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.private-key-display:hover::after {
+    opacity: 1;
+}
+
 .account-type-indicator {
     margin-top: 8px;
 }

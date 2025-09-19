@@ -15,16 +15,6 @@ class AccountManager {
         
         this.initializeElements();
         this.bindEvents();
-        this.initializeBlockchainConfig();
-        
-        // Initialize balance updates
-        this.updateAllBalances();
-        
-        // Initialize delegate contract status check
-        this.checkDelegateContractStatus();
-        
-        // Initialize delegate deploy button
-        this.updateDelegateDeployButton();
     }
 
     initializeElements() {
@@ -43,6 +33,7 @@ class AccountManager {
         this.userDisplaySection = document.getElementById('user-display-section');
         this.userPrivateKeyInput = document.getElementById('user-private-key');
         this.userAddressDisplay = document.getElementById('user-address');
+        this.userPrivateKeyDisplay = document.getElementById('user-private-key-display');
         this.userImportBtn = document.getElementById('user-import');
         this.userGenerateBtn = document.getElementById('user-generate');
         this.userResetBtn = document.getElementById('user-reset');
@@ -97,6 +88,9 @@ class AccountManager {
         this.userGenerateBtn.addEventListener('click', () => this.generateAccount('user'));
         this.userResetBtn.addEventListener('click', () => this.resetAccount('user'));
         this.userEditBtn.addEventListener('click', () => this.editAccount('user'));
+        
+        // Private key copy functionality
+        this.userPrivateKeyDisplay.addEventListener('click', () => this.copyToClipboard(this.userPrivateKeyDisplay.textContent, 'Private key'));
 
         // Enter key support for inputs
         this.relayerPrivateKeyInput.addEventListener('keypress', (e) => {
@@ -833,6 +827,11 @@ class AccountManager {
 
         // Display the address
         addressDisplay.textContent = address;
+        
+        // Display the private key for user accounts (not relayer)
+        if (type === 'user' && this.userPrivateKeyDisplay) {
+            this.userPrivateKeyDisplay.textContent = privateKey;
+        }
 
         // Update account type indicator
         if (accountTypeIndicator) {
@@ -934,6 +933,22 @@ class AccountManager {
         this.showMessage(message, 'error');
     }
 
+    async copyToClipboard(text, label = 'Text') {
+        try {
+            await navigator.clipboard.writeText(text);
+            this.showSuccessMessage(`${label} copied to clipboard!`);
+        } catch (error) {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            this.showSuccessMessage(`${label} copied to clipboard!`);
+        }
+    }
+
     showMessage(message, type) {
         // Create message element
         const messageDiv = document.createElement('div');
@@ -1026,5 +1041,15 @@ class AccountManager {
 // Initialize the application when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     const accountManager = new AccountManager();
+    accountManager.initializeBlockchainConfig();
     accountManager.loadSavedAccounts();
+    
+    // Initialize balance updates
+    accountManager.updateAllBalances();
+    
+    // Initialize delegate contract status check
+    accountManager.checkDelegateContractStatus();
+    
+    // Initialize delegate deploy button
+    accountManager.updateDelegateDeployButton();
 });
