@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gasless USDC Transfer with EIP-7702</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>💰</text></svg>">
+    <title>EIP-712 Gasless USDC Transfer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🔐</text></svg>">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>Gasless USDC Transfer with EIP-7702</h1>
+        <h1>EIP-712 Gasless USDC Transfer</h1>
         
         <div class="accounts-container">
             <!-- Relayer Account Section -->
@@ -97,7 +97,7 @@
             </div>
         </div>
 
-        <!-- Contract Deployment Section -->
+        <!-- USDC Contract Section -->
         <div class="contract-deployment">
             <h2>USDC Contract</h2>
             <div class="deployment-container">
@@ -105,7 +105,7 @@
                     <h3>ERC20Mintable Contract</h3>
                     <div class="contract-details">
                         <div class="detail-item">
-                            <label>Default Address:</label>
+                            <label>Contract Address:</label>
                             <span class="contract-address" id="default-contract-address">0x8A4BC9B8e31bc6B144fD1068581dc0FC2A7885e7</span>
                         </div>
                         <div class="detail-item">
@@ -118,63 +118,6 @@
                 <div class="deployment-actions">
                     <div class="deployment-form">
                         <div class="form-group">
-                            <label for="token-name">Token Name:</label>
-                            <input type="text" id="token-name" placeholder="Enter token name" class="form-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="token-symbol">Token Symbol:</label>
-                            <input type="text" id="token-symbol" placeholder="Enter token symbol" class="form-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="token-decimals">Token Decimals:</label>
-                            <input type="number" id="token-decimals" placeholder="18" value="18" min="0" max="18" class="form-input">
-                        </div>
-                        <button id="deploy-contract" class="btn btn-primary" disabled>Deploy Contract</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- SimpleDelegateContract Deployment Section -->
-        <div class="contract-deployment">
-            <h2>SimpleDelegateContract</h2>
-            <div class="deployment-container">
-                <div class="contract-info">
-                    <h3>EIP-7702 Delegation Contract</h3>
-                    <div class="contract-details">
-                        <div class="detail-item">
-                            <label>Default Address:</label>
-                            <span class="contract-address" id="delegate-contract-address">0xf6465b4C05C1a3a04E5cBCF623741b087eB965C7</span>
-                        </div>
-                        <div class="detail-item">
-                            <label>Status:</label>
-                            <span class="contract-status" id="delegate-contract-status">Checking...</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="deployment-actions">
-                    <div class="deployment-form">
-                        <button id="deploy-delegate-contract" class="btn btn-primary" disabled>Deploy SimpleDelegateContract</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Contract Interactions Section -->
-        <div class="contract-interactions">
-            <h2>Mint or Transfer USDC</h2>
-            <div class="interactions-container">
-                <!-- Mint Section -->
-                <div class="interaction-section">
-                    <h3>Mint Tokens</h3>
-                    <div class="interaction-subtitle">
-                        Called by Relayer Account
-                        <span class="balance-display" id="relayer-eth-balance">ETH (Relayer): Loading...</span>
-                        <span class="balance-display" id="user-eth-balance">ETH (User): Loading...</span>
-                    </div>
-                    <div class="interaction-form">
-                        <div class="form-group">
                             <label for="mint-recipient">Recipient Address:</label>
                             <input type="text" id="mint-recipient" placeholder="Enter recipient address" class="form-input">
                         </div>
@@ -185,12 +128,40 @@
                         <button id="mint-tokens" class="btn btn-success" disabled>Mint Tokens</button>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Transfer Section -->
+        <!-- EIP-712 Transfer Section -->
+        <div class="contract-interactions">
+            <h2>EIP-712 Gasless Transfer</h2>
+            <div class="interactions-container">
+                <!-- EIP-712 Message Section -->
                 <div class="interaction-section">
-                    <h3>Gasless Transfer Tokens (EIP-7702)</h3>
+                    <h3>EIP-712 Message Configuration</h3>
                     <div class="interaction-subtitle">
-                        Called by Relayer and User pays gas in tokens
+                        Configure the EIP-712 message for signature
+                    </div>
+                    <div class="interaction-form">
+                        <div class="form-group">
+                            <label for="domain-name">Domain Name:</label>
+                            <input type="text" id="domain-name" placeholder="SimpleDelegateContract" value="SimpleDelegateContract" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="domain-version">Domain Version:</label>
+                            <input type="text" id="domain-version" placeholder="1" value="1" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="expiry-time">Expiry (seconds from now):</label>
+                            <input type="number" id="expiry-time" placeholder="3600" value="3600" min="1" class="form-input">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transfer Configuration Section -->
+                <div class="interaction-section">
+                    <h3>Transfer Configuration</h3>
+                    <div class="interaction-subtitle">
+                        Configure the transfer details
                         <span class="balance-display" id="user-token-balance">Tokens (User): Loading...</span>
                         <span class="balance-display" id="relayer-token-balance">Tokens (Relayer): Loading...</span>
                     </div>
@@ -207,7 +178,33 @@
                             <label for="transfer-fee">Fee (to Relayer):</label>
                             <input type="number" id="transfer-fee" placeholder="Enter fee amount" min="0" step="0.001" class="form-input">
                         </div>
-                        <button id="transfer-tokens" class="btn btn-info" disabled>Gasless Transfer</button>
+                    </div>
+                </div>
+
+                <!-- Signature and Execution Section -->
+                <div class="interaction-section">
+                    <h3>Signature & Execution</h3>
+                    <div class="interaction-subtitle">
+                        Sign the EIP-712 message and execute the transfer
+                    </div>
+                    <div class="interaction-form">
+                        <div class="form-group">
+                            <label>EIP-712 Message Preview:</label>
+                            <textarea id="eip712-preview" readonly class="form-textarea" rows="8"></textarea>
+                        </div>
+                        <div class="button-group">
+                            <button id="sign-message" class="btn btn-info" disabled>Sign EIP-712 Message</button>
+                            <button id="verify-signature" class="btn btn-secondary" disabled>Verify Signature</button>
+                            <button id="execute-transfer" class="btn btn-success" disabled>Execute Transfer</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Signature:</label>
+                            <textarea id="signature-output" readonly class="form-textarea" rows="3" placeholder="Signature will appear here after signing"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Verification Result:</label>
+                            <div id="verification-result" class="verification-display"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -215,6 +212,6 @@
     </div>
 
     <script src="ethers-6.15.0.umd.min.js" type="application/javascript"></script>
-    <script src="script.js"></script>
+    <script src="eip712-transfer.js"></script>
 </body>
 </html>
