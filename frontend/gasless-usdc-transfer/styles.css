@@ -593,14 +593,78 @@ h1 {
     font-weight: 600;
 }
 
+/* Generic input group used in USDC/Transfer sections */
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.input-group label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+}
+
+.input-group input {
+    padding: 10px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-group input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.two-column .left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.two-column .right {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.two-column .right button {
+    padding: 10px 14px;
+    border: none;
+    background: #667eea;
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.05s ease;
+}
+
+.two-column .right button:disabled {
+    background: #c9ccea;
+    cursor: not-allowed;
+}
+
+.two-column .right button:hover:not(:disabled) {
+    background: #5a67d8;
+}
+
+/* Ensure subtitles have consistent spacing */
 .interaction-subtitle {
     color: #6c757d;
     font-size: 12px;
-    margin-bottom: 20px;
-    font-style: italic;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    margin-bottom: 16px;
 }
 
 .balance-display {
@@ -611,6 +675,7 @@ h1 {
     padding: 4px 8px;
     border-radius: 6px;
     border: 1px solid #dee2e6;
+    display: block;
 }
 
 .interaction-form {
@@ -646,6 +711,10 @@ h1 {
     .interactions-container {
         grid-template-columns: 1fr;
         gap: 20px;
+    }
+    .two-column {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
 }
 

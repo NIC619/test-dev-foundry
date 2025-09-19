@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EIP-712 Gasless USDC Transfer</title>
+    <title>Gasless USDC Transfer with EIP-7702</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🔐</text></svg>">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>EIP-712 Gasless USDC Transfer</h1>
+        <h1>Gasless USDC Transfer with EIP-7702</h1>
         
         <div class="accounts-container">
             <!-- Relayer Account Section -->
@@ -133,35 +133,17 @@
 
         <!-- EIP-712 Transfer Section -->
         <div class="contract-interactions">
-            <h2>EIP-712 Gasless Transfer</h2>
+            <h2>Gasless Transfer</h2>
             <div class="interactions-container">
-                <!-- EIP-712 Message Section -->
-                <div class="interaction-section">
-                    <h3>EIP-712 Message Configuration</h3>
-                    <div class="interaction-subtitle">
-                        Configure the EIP-712 message for signature
-                    </div>
-                    <div class="interaction-form">
-                        <div class="form-group">
-                            <label for="domain-name">Domain Name:</label>
-                            <input type="text" id="domain-name" placeholder="SimpleDelegateContract" value="SimpleDelegateContract" class="form-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="domain-version">Domain Version:</label>
-                            <input type="text" id="domain-version" placeholder="1" value="1" class="form-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="expiry-time">Expiry (seconds from now):</label>
-                            <input type="number" id="expiry-time" placeholder="3600" value="3600" min="1" class="form-input">
-                        </div>
-                    </div>
-                </div>
+                <!-- EIP-712 Message Section removed for simplified flow -->
 
                 <!-- Transfer Configuration Section -->
                 <div class="interaction-section">
                     <h3>Transfer Configuration</h3>
                     <div class="interaction-subtitle">
                         Configure the transfer details
+                    </div>
+                    <div class="interaction-subtitle">
                         <span class="balance-display" id="user-token-balance">Tokens (User): Loading...</span>
                         <span class="balance-display" id="relayer-token-balance">Tokens (Relayer): Loading...</span>
                     </div>
@@ -178,35 +160,13 @@
                             <label for="transfer-fee">Fee (to Relayer):</label>
                             <input type="number" id="transfer-fee" placeholder="Enter fee amount" min="0" step="0.001" class="form-input">
                         </div>
+                        <div class="button-group">
+                            <button id="submit-transfer" class="btn btn-success" disabled>Transfer</button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Signature and Execution Section -->
-                <div class="interaction-section">
-                    <h3>Signature & Execution</h3>
-                    <div class="interaction-subtitle">
-                        Sign the EIP-712 message and execute the transfer
-                    </div>
-                    <div class="interaction-form">
-                        <div class="form-group">
-                            <label>EIP-712 Message Preview:</label>
-                            <textarea id="eip712-preview" readonly class="form-textarea" rows="8"></textarea>
-                        </div>
-                        <div class="button-group">
-                            <button id="sign-message" class="btn btn-info" disabled>Sign EIP-712 Message</button>
-                            <button id="verify-signature" class="btn btn-secondary" disabled>Verify Signature</button>
-                            <button id="execute-transfer" class="btn btn-success" disabled>Execute Transfer</button>
-                        </div>
-                        <div class="form-group">
-                            <label>Signature:</label>
-                            <textarea id="signature-output" readonly class="form-textarea" rows="3" placeholder="Signature will appear here after signing"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Verification Result:</label>
-                            <div id="verification-result" class="verification-display"></div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Signature and Execution Section removed for simplified flow -->
             </div>
         </div>
     </div>

@@ -52,12 +52,6 @@ class EIP712TransferManager {
         this.mintAmountInput = document.getElementById('mint-amount');
         this.mintTokensBtn = document.getElementById('mint-tokens');
 
-        // EIP-712 elements
-        this.domainNameInput = document.getElementById('domain-name');
-        this.domainVersionInput = document.getElementById('domain-version');
-        this.expiryTimeInput = document.getElementById('expiry-time');
-        this.eip712Preview = document.getElementById('eip712-preview');
-
         // Transfer elements
         this.transferRecipientInput = document.getElementById('transfer-recipient');
         this.transferAmountInput = document.getElementById('transfer-amount');
@@ -65,12 +59,8 @@ class EIP712TransferManager {
         this.userTokenBalance = document.getElementById('user-token-balance');
         this.relayerTokenBalance = document.getElementById('relayer-token-balance');
 
-        // Signature elements
-        this.signMessageBtn = document.getElementById('sign-message');
-        this.verifySignatureBtn = document.getElementById('verify-signature');
-        this.executeTransferBtn = document.getElementById('execute-transfer');
-        this.signatureOutput = document.getElementById('signature-output');
-        this.verificationResult = document.getElementById('verification-result');
+        // Single action button
+        this.submitTransferBtn = document.getElementById('submit-transfer');
     }
 
     bindEvents() {
@@ -106,16 +96,13 @@ class EIP712TransferManager {
         // Contract events
         this.mintTokensBtn.addEventListener('click', () => this.mintTokens());
 
-        // EIP-712 events
-        [this.domainNameInput, this.domainVersionInput, this.expiryTimeInput, 
-         this.transferRecipientInput, this.transferAmountInput, this.transferFeeInput].forEach(input => {
-            input.addEventListener('input', async () => await this.updateEIP712Preview());
+        // Form change events to toggle Transfer button
+        [this.transferRecipientInput, this.transferAmountInput, this.transferFeeInput].forEach(input => {
+            input.addEventListener('input', async () => await this.updateTransferButtonState());
         });
 
-        // Signature events
-        this.signMessageBtn.addEventListener('click', () => this.signEIP712Message());
-        this.verifySignatureBtn.addEventListener('click', () => this.verifySignature());
-        this.executeTransferBtn.addEventListener('click', () => this.executeTransfer());
+        // Single Transfer action
+        this.submitTransferBtn.addEventListener('click', () => this.handleTransfer());
     }
 
     initializeBlockchainConfig() {
@@ -275,8 +262,8 @@ class EIP712TransferManager {
             accountSection.classList.remove('success');
         }, 2000);
 
-        // Update EIP-712 preview when accounts change
-        await this.updateEIP712Preview();
+        // Update button state when accounts change
+        await this.updateTransferButtonState();
     }
 
     async resetAccount(type) {
@@ -376,7 +363,7 @@ class EIP712TransferManager {
             this.showSuccessMessage(`Minted ${amount} tokens to ${recipient}`, explorerLink);
 
             // Update balances after minting
-            await this.updateBalances();
+            this.updateBalances();
 
         } catch (error) {
             console.error('Error minting tokens:', error);
@@ -409,108 +396,78 @@ class EIP712TransferManager {
         }
     }
 
-    async updateEIP712Preview() {
+    async updateTransferButtonState() {
         try {
-            const userData = localStorage.getItem('userAccount');
-            if (!userData) {
-                this.eip712Preview.value = 'Please set up user account first';
-                return;
-            }
-
-            const userAccountData = JSON.parse(userData);
-            const userAddress = userAccountData.address;
-
             const recipient = this.transferRecipientInput.value.trim();
             const amountInput = this.transferAmountInput.value.trim();
-            const feeInput = this.transferFeeInput.value.trim();
-            const amount = amountInput ? ethers.parseUnits(amountInput, 18) : 0n;
-            const fee = feeInput ? ethers.parseUnits(feeInput, 18) : 0n;
-
-            if (!recipient || !amount) {
-                this.eip712Preview.value = 'Please fill in recipient and amount';
-                return;
-            }
-
-            const contractAddress = this.defaultContractAddressDisplay.textContent.trim();
-            const delegateContractAddress = this.defaultDelegateContractAddress;
-
-            // Create the calls array
-            const calls = [];
-            
-            // Transfer call
-            if (amount && recipient) {
-                const transferData = this.encodeTransferData(recipient, amount);
-                calls.push({
-                    to: contractAddress,
-                    value: "0",
-                    data: transferData
-                });
-            }
-
-            // Fee transfer call
-            if (fee && fee !== 0n) {
-                const feeData = this.encodeTransferData(this.getRelayerAddress(), fee);
-                calls.push({
-                    to: contractAddress,
-                    value: "0",
-                    data: feeData
-                });
-            }
-
-            const domainName = this.domainNameInput.value.trim() || 'SimpleDelegateContract';
-            const domainVersion = this.domainVersionInput.value.trim() || '1';
-            const expiryTime = parseInt(this.expiryTimeInput.value) || 3600;
-            const expiry = Math.floor(Date.now() / 1000) + expiryTime;
-
-            // Get chain ID from RPC
-            const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
-            const chainId = await provider.getNetwork().then(network => Number(network.chainId));
-            
-            const domain = {
-                name: domainName,
-                version: domainVersion,
-                chainId: chainId,
-                verifyingContract: userAddress
-            };
-
-            const types = {
-                Call: [
-                    { name: 'to', type: 'address' },
-                    { name: 'value', type: 'uint256' },
-                    { name: 'data', type: 'bytes' }
-                ],
-                ExecuteWithSigMessage: [
-                    { name: 'userAccountAddress', type: 'address' },
-                    { name: 'expiry', type: 'uint256' },
-                    { name: 'calls', type: 'Call[]' }
-                ]
-            };
-
-            const message = {
-                userAccountAddress: userAddress,
-                expiry: expiry.toString(),
-                calls: calls
-            };
-
-            const typedData = {
-                domain: domain,
-                message: message,
-                primaryType: 'ExecuteWithSigMessage',
-                types: types
-            };
-
-            this.eip712Preview.value = JSON.stringify(typedData, null, 2);
-
-            // Enable/disable buttons based on form completion
-            const isFormComplete = recipient && amount && calls.length > 0;
-            this.signMessageBtn.disabled = !isFormComplete;
-            this.verifySignatureBtn.disabled = !isFormComplete || !this.signatureOutput.value.trim();
-            this.executeTransferBtn.disabled = !isFormComplete || !this.signatureOutput.value.trim();
-
-        } catch (error) {
-            console.error('Error updating EIP-712 preview:', error);
-            this.eip712Preview.value = `Error: ${error.message}`;
+            const isFormComplete = this.isValidAddress(recipient) && amountInput && amountInput !== '0';
+            this.submitTransferBtn.disabled = !isFormComplete;
+        } catch (_) {
+            this.submitTransferBtn.disabled = true;
         }
+    }
+
+    async buildTypedData() {
+        const userData = localStorage.getItem('userAccount');
+        if (!userData) {
+            throw new Error('User account not found');
+        }
+
+        const userAccountData = JSON.parse(userData);
+        const userAddress = userAccountData.address;
+
+        const recipient = this.transferRecipientInput.value.trim();
+        const amountInput = this.transferAmountInput.value.trim();
+        const feeInput = this.transferFeeInput.value.trim();
+        const amount = amountInput ? ethers.parseUnits(amountInput, 18) : 0n;
+        const fee = feeInput ? ethers.parseUnits(feeInput, 18) : 0n;
+
+        const contractAddress = this.defaultContractAddressDisplay.textContent.trim();
+
+        const calls = [];
+        if (amount && recipient) {
+            const transferData = this.encodeTransferData(recipient, amount);
+            calls.push({ to: contractAddress, value: "0", data: transferData });
+        }
+        if (fee && fee !== 0n) {
+            const feeData = this.encodeTransferData(this.getRelayerAddress(), fee);
+            calls.push({ to: contractAddress, value: "0", data: feeData });
+        }
+
+        const expiryTime = 3600; // seconds
+        const expiry = Math.floor(Date.now() / 1000) + expiryTime;
+
+        const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
+        const chainId = await provider.getNetwork().then(network => Number(network.chainId));
+
+        const domain = {
+            name: 'SimpleDelegateContract',
+            version: '1',
+            chainId: chainId,
+            // verifyingContract: userAddress
+            verifyingContract: '0xf6465b4C05C1a3a04E5cBCF623741b087eB965C7'
+        };
+
+        const types = {
+            Call: [
+                { name: 'to', type: 'address' },
+                { name: 'value', type: 'uint256' },
+                { name: 'data', type: 'bytes' }
+            ],
+            ExecuteWithSigMessage: [
+                { name: 'userAccountAddress', type: 'address' },
+                { name: 'expiry', type: 'uint256' },
+                { name: 'calls', type: 'Call[]' }
+            ]
+        };
+
+        const message = {
+            userAccountAddress: userAddress,
+            expiry: expiry.toString(),
+            calls: calls
+        };
+
+        return { domain, types, message };
     }
 
     encodeTransferData(to, amount) {
@@ -529,47 +486,68 @@ class EIP712TransferManager {
         return accountData.address;
     }
 
-    async signEIP712Message() {
+    async handleTransfer() {
         try {
-            this.signMessageBtn.disabled = true;
-            this.signMessageBtn.textContent = 'Signing...';
+            this.submitTransferBtn.disabled = true;
+            this.submitTransferBtn.textContent = 'Transferring...';
 
-            const userData = localStorage.getItem('userAccount');
-            if (!userData) {
-                this.showErrorMessage('User account not found');
+            // Ensure delegation
+            const isDelegated = await this.checkUserDelegation();
+            if (!isDelegated) {
+                this.showErrorMessage('User account is not delegated to SimpleDelegateContract. Please delegate the account first.');
                 return;
             }
 
-            const userAccountData = JSON.parse(userData);
-            const userPrivateKey = userAccountData.privateKey;
-            const userAddress = userAccountData.address;
+            // Build typed data
+            const typedData = await this.buildTypedData();
 
-            // Get the typed data from preview
-            const typedData = JSON.parse(this.eip712Preview.value);
-
-            // Create wallet and sign
+            // User signs
+            const userData = localStorage.getItem('userAccount');
+            const { privateKey: userPrivateKey, address: userAddress } = JSON.parse(userData);
             const provider = new ethers.JsonRpcProvider(this.currentRpcUrl);
-            const wallet = new ethers.Wallet(userPrivateKey, provider);
-
-            const signature = await wallet.signTypedData(
+            const userWallet = new ethers.Wallet(userPrivateKey, provider);
+            const signature = await userWallet.signTypedData(
                 typedData.domain,
                 typedData.types,
                 typedData.message
             );
+            const sig = ethers.Signature.from(signature);
 
-            this.signatureOutput.value = signature;
-            this.showSuccessMessage('EIP-712 message signed successfully!');
+            // Relayer executes
+            const relayerData = localStorage.getItem('relayerAccount');
+            if (!relayerData) {
+                this.showErrorMessage('Relayer account not found');
+                return;
+            }
+            const { privateKey: relayerPrivateKey } = JSON.parse(relayerData);
 
-            // Enable verify and execute buttons
-            this.verifySignatureBtn.disabled = false;
-            this.executeTransferBtn.disabled = false;
+            const relayerSigner = new ethers.Wallet(relayerPrivateKey, provider);
+            const contract = new ethers.Contract(
+                userAddress, // User's account address (delegated to SimpleDelegateContract)
+                [
+                    "function executeWithSig((address userAccountAddress,uint256 expiry,(bytes data,address to,uint256 value)[] calls) message,uint8 v,bytes32 r,bytes32 s) payable"
+                ],
+                relayerSigner
+            );
+
+            const tx = await contract.executeWithSig(
+                typedData.message,
+                sig.v,
+                sig.r,
+                sig.s
+            );
+            await tx.wait();
+
+            const explorerLink = `${this.currentExplorerUrl}/tx/${tx.hash}`;
+            this.showSuccessMessage('Transfer executed successfully!', explorerLink);
+            this.updateBalances();
 
         } catch (error) {
-            console.error('Error signing EIP-712 message:', error);
-            this.showErrorMessage(`Failed to sign message: ${error.message}`);
+            console.error('Error executing transfer:', error);
+            this.showErrorMessage(`Failed to execute transfer: ${error.message}`);
         } finally {
-            this.signMessageBtn.disabled = false;
-            this.signMessageBtn.textContent = 'Sign EIP-712 Message';
+            this.submitTransferBtn.disabled = false;
+            this.submitTransferBtn.textContent = 'Transfer';
         }
     }
 
@@ -721,7 +699,7 @@ class EIP712TransferManager {
             this.showSuccessMessage('Transfer executed successfully!', explorerLink);
 
             // Update balances after transfer
-            await this.updateBalances();
+            this.updateBalances();
 
         } catch (error) {
             console.error('Error executing transfer:', error);
@@ -751,19 +729,32 @@ class EIP712TransferManager {
             if (userData) {
                 const userAccountData = JSON.parse(userData);
                 const userBalance = await contract.balanceOf(userAccountData.address);
-                this.userTokenBalance.textContent = `Tokens (User): ${ethers.formatUnits(userBalance, 18)}`;
+                this.userTokenBalance.textContent = `Tokens (User): ${this.formatTokenAmount(userBalance)}`;
             }
 
             if (relayerData) {
                 const relayerAccountData = JSON.parse(relayerData);
                 const relayerBalance = await contract.balanceOf(relayerAccountData.address);
-                this.relayerTokenBalance.textContent = `Tokens (Relayer): ${ethers.formatUnits(relayerBalance, 18)}`;
+                this.relayerTokenBalance.textContent = `Tokens (Relayer): ${this.formatTokenAmount(relayerBalance)}`;
             }
 
         } catch (error) {
             console.error('Error updating balances:', error);
             this.userTokenBalance.textContent = 'Tokens (User): Error loading';
             this.relayerTokenBalance.textContent = 'Tokens (Relayer): Error loading';
+        }
+    }
+
+    formatTokenAmount(amount) {
+        try {
+            const full = ethers.formatUnits(amount, 18);
+            if (!full.includes('.')) return full;
+            const [intPart, fracPart] = full.split('.');
+            const sliced = fracPart.slice(0, 2);
+            const trimmed = sliced.replace(/0+$/, '');
+            return trimmed ? `${intPart}.${trimmed}` : intPart;
+        } catch (_) {
+            return String(amount);
         }
     }
 
