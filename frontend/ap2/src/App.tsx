@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { WagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { config } from './wagmi'
-import { USDCBalance } from './components/USDCBalance'
+import { USDCBalance, USDCBalanceRef } from './components/USDCBalance'
 import { DemoCards } from './components/DemoCards'
 import { ToastContainer } from './components/ToastContainer'
 import { useToast } from './hooks/useToast'
@@ -12,6 +12,7 @@ const queryClient = new QueryClient()
 
 function App() {
   const { toasts, hideToast, showError, showSuccess, showInfo } = useToast();
+  const usdcBalanceRef = useRef<USDCBalanceRef>(null);
 
   return (
     <WagmiProvider config={config}>
@@ -29,6 +30,7 @@ function App() {
               </div>
 
               <USDCBalance
+                ref={usdcBalanceRef}
                 onShowError={showError}
                 onShowSuccess={showSuccess}
                 onShowInfo={showInfo}
@@ -37,6 +39,7 @@ function App() {
                 onShowError={showError}
                 onShowSuccess={showSuccess}
                 onShowInfo={showInfo}
+                onBalanceRefresh={() => usdcBalanceRef.current?.refreshBalance()}
               />
 
             </div>

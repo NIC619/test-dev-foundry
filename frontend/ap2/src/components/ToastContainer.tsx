@@ -44,14 +44,15 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onHideTo
     onHideToast(id);
   };
 
-  // Auto-hide toasts after 10 seconds
+  // Auto-hide toasts - error messages stay longer
   React.useEffect(() => {
     const timers: NodeJS.Timeout[] = [];
 
     toasts.forEach(toast => {
+      const hideTime = toast.type === 'error' ? 15000 : 4000; // 15s for errors, 4s for others
       const timer = setTimeout(() => {
         handleToastClose(toast.id);
-      }, 10000);
+      }, hideTime);
       timers.push(timer);
     });
 
@@ -69,7 +70,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onHideTo
       display: 'flex',
       flexDirection: 'column',
       gap: '12px',
-      maxWidth: '400px'
+      maxWidth: '600px'
     }}>
       {toasts.map((toast) => {
         const styles = getTypeStyles(toast.type);
@@ -85,7 +86,10 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onHideTo
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
               animation: 'slideIn 0.3s ease-out',
               fontFamily: 'inherit',
-              minWidth: '300px'
+              minWidth: '500px',
+              maxWidth: '700px',
+              maxHeight: 'none',
+              overflow: 'visible'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
@@ -104,15 +108,55 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onHideTo
                   {toast.type === 'success' && 'Success'}
                   {toast.type === 'info' && 'Info'}
                 </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: styles.textColor,
-                  opacity: 0.8,
-                  lineHeight: '1.4',
-                  wordBreak: 'break-word'
-                }}>
-                  {toast.message}
-                </div>
+                {toast.type === 'error' ? (
+                  <textarea
+                    readOnly
+                    value={toast.message}
+                    style={{
+                      width: '100%',
+                      height: '150px',
+                      fontSize: '11px',
+                      color: styles.textColor,
+                      lineHeight: '1.3',
+                      fontFamily: 'monospace',
+                      border: '2px solid rgba(0,0,0,0.3)',
+                      borderRadius: '6px',
+                      padding: '12px',
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                      resize: 'vertical',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    fontSize: '13px',
+                    color: styles.textColor,
+                    opacity: 0.9,
+                    lineHeight: '1.4',
+                    padding: '4px 0'
+                  }}>
+                    {toast.message.includes('https://') ? (
+                      <>
+                        {toast.message.split('https://')[0]}
+                        <a
+                          href={`https://${toast.message.split('https://')[1]}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: styles.textColor,
+                            textDecoration: 'underline',
+                            fontWeight: '600'
+                          }}
+                        >
+                          View Transaction
+                        </a>
+                      </>
+                    ) : (
+                      toast.message
+                    )}
+                  </div>
+                )}
               </div>
 
               <button

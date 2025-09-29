@@ -5,12 +5,14 @@ interface DemoCardsProps {
   onShowError: (message: string) => void;
   onShowSuccess: (message: string) => void;
   onShowInfo: (message: string) => void;
+  onBalanceRefresh: () => void;
 }
 
 export const DemoCards: React.FC<DemoCardsProps> = ({
   onShowError,
   onShowSuccess,
-  onShowInfo
+  onShowInfo,
+  onBalanceRefresh
 }) => {
   const [showX402Payment, setShowX402Payment] = useState(false);
 
@@ -238,6 +240,7 @@ export const DemoCards: React.FC<DemoCardsProps> = ({
               onShowError={onShowError}
               onShowSuccess={onShowSuccess}
               onShowInfo={onShowInfo}
+              onBalanceRefresh={onBalanceRefresh}
             />
           </div>
         </div>

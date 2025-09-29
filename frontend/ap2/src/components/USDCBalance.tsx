@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
 import { ethers } from 'ethers';
 import { unifiTestnet } from '../wagmi';
@@ -13,11 +13,15 @@ interface USDCBalanceProps {
   onShowInfo: (message: string) => void;
 }
 
-export const USDCBalance: React.FC<USDCBalanceProps> = ({
+export interface USDCBalanceRef {
+  refreshBalance: () => void;
+}
+
+export const USDCBalance = forwardRef<USDCBalanceRef, USDCBalanceProps>(({
   onShowError,
   onShowSuccess,
   onShowInfo
-}) => {
+}, ref) => {
   const { address, chainId, isConnected } = useAccount();
   const { connect, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
@@ -77,6 +81,11 @@ export const USDCBalance: React.FC<USDCBalanceProps> = ({
       setBalance('');
     }
   }, [isConnected, address, isCorrectNetwork, fetchBalance]);
+
+  // Expose fetchBalance to parent components
+  useImperativeHandle(ref, () => ({
+    refreshBalance: fetchBalance
+  }), [fetchBalance]);
 
   const handleMint = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -353,4 +362,6 @@ export const USDCBalance: React.FC<USDCBalanceProps> = ({
       )}
     </div>
   );
-};
+});
+
+USDCBalance.displayName = 'USDCBalance';
