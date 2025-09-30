@@ -30,21 +30,15 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
   const [isCheckingAllowance, setIsCheckingAllowance] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isPayment, setIsPayment] = useState(false);
-  const [paymentInfo, setPaymentInfo] = useState<{
-    intent: {
-      user: string;
-      task: string;
-      token: string;
-      maxPrice: string;
-      expires: number;
-      nonce: string;
-    };
-    cart: {
-      merchant: string;
-      token: string;
-      amount: string;
-    };
+  const [recurringIntent, setRecurringIntent] = useState<{
+    user: string;
+    merchant: string;
+    token: string;
+    amount: string;
+    interval: number;
+    expires: number;
   } | null>(null);
+  const [recurringSignature, setRecurringSignature] = useState<string | null>(null);
 
   // Check USDC allowance
   const checkAllowance = useCallback(async () => {
@@ -129,17 +123,14 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
     }
   }, [address, isConnected, onShowError, onShowSuccess, onShowInfo, checkAllowance]);
 
-  // Execute x402 payment
+  // Execute recurring payment (two-phase: sign once, pay multiple times)
   const executePayment = useCallback(async () => {
     if (!address || !isConnected) {
       onShowError('Please connect your wallet');
       return;
     }
 
-    // Note: Using agent for gasless transactions - no user signer needed for execution
-    // Only need wallet connected for EIP712 signing
-
-    if (parseFloat(allowance) < 1) {
+    if (parseFloat(allowance) < 0.1) {
       onShowError('Insufficient USDC allowance. Please approve USDC first.');
       return;
     }
@@ -147,90 +138,67 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
     try {
       setIsPayment(true);
 
-      // Generate payment data
-      const nonce = ethers.hexlify(ethers.randomBytes(32));
-      const expires = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-      const taskHash = ethers.keccak256(ethers.toUtf8Bytes(X402_CONFIG.TASK_DESCRIPTION));
+      // Phase 1: Sign recurring intent (only needed once)
+      if (!recurringIntent || !recurringSignature) {
+        onShowInfo('Please sign the recurring payment authorization...');
 
-      const intent = {
-        user: address,
-        task: taskHash,
-        token: CONTRACTS.USDC,
-        maxPrice: X402_CONFIG.PAYMENT_AMOUNT,
-        expires,
-        nonce
-      };
+        const expires = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // 24 hours from now
 
-      const cart = {
-        merchant: X402_CONFIG.MERCHANT_ADDRESS,
-        token: CONTRACTS.USDC,
-        amount: X402_CONFIG.PAYMENT_AMOUNT
-      };
+        const intent = {
+          user: address,
+          merchant: X402_CONFIG.MERCHANT_ADDRESS,
+          token: CONTRACTS.USDC,
+          amount: X402_CONFIG.PAYMENT_AMOUNT,
+          interval: 0, // No interval - can pay immediately and repeatedly
+          expires
+        };
 
-      setPaymentInfo({ intent, cart });
-      onShowInfo('Please sign the payment authorization...');
+        // Sign the recurring intent with user's wallet using WAGMI
+        const userSignature = await signTypedDataAsync({
+          domain: {
+            name: 'PaymentFacilitator',
+            version: '1',
+            chainId: 2092151908,
+            verifyingContract: CONTRACTS.PAYMENT_FACILITATOR as `0x${string}`
+          },
+          types: {
+            RecurringIntentMandate: [
+              { name: 'user', type: 'address' },
+              { name: 'merchant', type: 'address' },
+              { name: 'token', type: 'address' },
+              { name: 'amount', type: 'uint256' },
+              { name: 'interval', type: 'uint256' },
+              { name: 'expires', type: 'uint256' }
+            ]
+          },
+          primaryType: 'RecurringIntentMandate',
+          message: {
+            user: intent.user as `0x${string}`,
+            merchant: intent.merchant as `0x${string}`,
+            token: intent.token as `0x${string}`,
+            amount: BigInt(intent.amount),
+            interval: BigInt(intent.interval),
+            expires: BigInt(intent.expires)
+          }
+        });
 
-      // Sign the intent with user's wallet using WAGMI
-      const userSignature = await signTypedDataAsync({
-        domain: {
-          name: 'PaymentFacilitator',
-          version: '1',
-          chainId: 2092151908,
-          verifyingContract: CONTRACTS.PAYMENT_FACILITATOR as `0x${string}`
-        },
-        types: {
-          IntentMandate: [
-            { name: 'user', type: 'address' },
-            { name: 'task', type: 'bytes32' },
-            { name: 'token', type: 'address' },
-            { name: 'maxPrice', type: 'uint256' },
-            { name: 'expires', type: 'uint256' },
-            { name: 'nonce', type: 'uint256' }
-          ]
-        },
-        primaryType: 'IntentMandate',
-        message: {
-          user: intent.user as `0x${string}`,
-          task: intent.task as `0x${string}`,
-          token: intent.token as `0x${string}`,
-          maxPrice: BigInt(intent.maxPrice),
-          expires: BigInt(intent.expires),
-          nonce: BigInt(intent.nonce)
-        }
-      });
+        setRecurringIntent(intent);
+        setRecurringSignature(userSignature);
+        onShowSuccess('Recurring payment authorization signed! You can now pay multiple times.');
+        return;
+      }
 
-      // Sign the cart with merchant's key (simulated) - using ethers for private key signing
-      // Note: signTypedDataAsync is for connected wallet, not private key signing
-      const merchantWallet = new ethers.Wallet(X402_CONFIG.MERCHANT_PRIVATE_KEY);
-      const cartSignature = await merchantWallet.signTypedData(
-        {
-          name: 'PaymentFacilitator',
-          version: '1',
-          chainId: 2092151908,
-          verifyingContract: CONTRACTS.PAYMENT_FACILITATOR
-        },
-        {
-          CartMandate: [
-            { name: 'merchant', type: 'address' },
-            { name: 'token', type: 'address' },
-            { name: 'amount', type: 'uint256' }
-          ]
-        },
-        cart
-      );
-
-      onShowInfo('Executing payment transaction via agent...');
+      // Phase 2: Execute payment using stored signature
+      onShowInfo('Executing recurring payment via agent...');
 
       // Execute the payment through PaymentFacilitator using agent
       const provider = new ethers.JsonRpcProvider('https://testnet-unifi-rpc.puffer.fi/');
       const agentWallet = new ethers.Wallet(X402_CONFIG.AGENT_PRIVATE_KEY, provider);
 
       const facilitatorAbi = [
-        `function executePurchase(
-          tuple(address user, bytes32 task, address token, uint256 maxPrice, uint256 expires, uint256 nonce) intent,
-          tuple(address merchant, address token, uint256 amount) cart,
-          bytes userSignature,
-          bytes cartSignature
+        `function executeRecurringPayment(
+          tuple(address user, address merchant, address token, uint256 amount, uint256 interval, uint256 expires) recurringIntent,
+          bytes userSignature
         )`
       ];
 
@@ -243,12 +211,12 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
       // Try to execute with manual gas limit as fallback for rate-limited RPC
       let tx;
       try {
-        tx = await facilitatorContract.executePurchase(intent, cart, userSignature, cartSignature);
+        tx = await facilitatorContract.executeRecurringPayment(recurringIntent, recurringSignature);
       } catch (gasError: any) {
         // If gas estimation fails, try with manual gas limit
         if (gasError.message?.includes('estimateGas') || gasError.message?.includes('rate limit')) {
           onShowInfo('Gas estimation failed, retrying with manual gas limit...');
-          tx = await facilitatorContract.executePurchase(intent, cart, userSignature, cartSignature, {
+          tx = await facilitatorContract.executeRecurringPayment(recurringIntent, recurringSignature, {
             gasLimit: 300000 // Manual gas limit as fallback
           });
         } else {
@@ -260,7 +228,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
 
       await tx.wait();
 
-      onShowSuccess(`Successfully paid 1 USDC for ${X402_CONFIG.SERVICE_NAME} access (gasless)! View transaction: https://testnet-explorer-unifi.puffer.fi/tx/${tx.hash}`);
+      onShowSuccess(`Successfully paid 0.1 USDC for ${X402_CONFIG.SERVICE_NAME} access (gasless)! View transaction: https://testnet-explorer-unifi.puffer.fi/tx/${tx.hash}`);
       await checkAllowance(); // Refresh allowance
       onBalanceRefresh(); // Refresh USDC balance in the balance component
     } catch (error) {
@@ -277,9 +245,11 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
       } else if (msg.includes('insufficient')) {
         cleanError = 'Insufficient funds or allowance for payment';
       } else if (msg.includes('intent expired')) {
-        cleanError = 'Payment authorization expired. Please try again.';
-      } else if (msg.includes('nonce already used')) {
-        cleanError = 'Payment nonce already used. Please try again.';
+        cleanError = 'Payment authorization expired. Please sign again.';
+        setRecurringIntent(null);
+        setRecurringSignature(null);
+      } else if (msg.includes('interval not met')) {
+        cleanError = 'Payment interval not met. Please wait before paying again.';
       } else {
         cleanError = `Payment failed: ${errorMessage}`;
       }
@@ -287,9 +257,8 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
       onShowError(cleanError);
     } finally {
       setIsPayment(false);
-      setPaymentInfo(null);
     }
-  }, [address, isConnected, allowance, signTypedDataAsync, onShowError, onShowSuccess, onShowInfo, checkAllowance, onBalanceRefresh]);
+  }, [address, isConnected, allowance, recurringIntent, recurringSignature, signTypedDataAsync, onShowError, onShowSuccess, onShowInfo, checkAllowance, onBalanceRefresh]);
 
   // Auto-check allowance when connected
   useEffect(() => {
@@ -298,7 +267,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
     }
   }, [isConnected, address, checkAllowance]);
 
-  const hasEnoughAllowance = parseFloat(allowance) >= 1;
+  const hasEnoughAllowance = parseFloat(allowance) >= 0.1;
 
   return (
     <div style={{ padding: '24px' }}>
@@ -311,7 +280,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
             <strong>Service:</strong> {X402_CONFIG.SERVICE_NAME}
           </p>
           <p style={{ margin: '0 0 8px 0' }}>
-            <strong>Payment:</strong> 1 USDC per request
+            <strong>Payment:</strong> 0.1 USDC per request
           </p>
           <p style={{ margin: '0 0 8px 0' }}>
             <strong>Network:</strong> Unifi Testnet
@@ -368,6 +337,34 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
         </div>
       </div>
 
+      {/* Recurring Payment Status */}
+      <div style={{
+        padding: '16px',
+        backgroundColor: recurringIntent ? '#f0f9ff' : '#f9fafb',
+        border: `1px solid ${recurringIntent ? '#bfdbfe' : '#e5e7eb'}`,
+        borderRadius: '8px',
+        marginBottom: '24px'
+      }}>
+        <p style={{
+          margin: '0 0 4px 0',
+          fontSize: '14px',
+          fontWeight: '600',
+          color: recurringIntent ? '#0369a1' : '#6b7280'
+        }}>
+          Recurring Payment Authorization
+        </p>
+        <p style={{
+          margin: 0,
+          fontSize: '12px',
+          color: recurringIntent ? '#0284c7' : '#9ca3af'
+        }}>
+          {recurringIntent ?
+            `✅ Authorized until ${new Date(recurringIntent.expires * 1000).toLocaleDateString()}` :
+            'Not yet authorized - sign once to enable multiple payments'
+          }
+        </p>
+      </div>
+
       {/* Action Buttons */}
       <div style={{ display: 'flex', gap: '16px' }}>
         {!hasEnoughAllowance && (
@@ -407,7 +404,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
             opacity: (isPayment || !isConnected || !hasEnoughAllowance) ? 0.5 : 1
           }}
         >
-{isPayment ? 'Processing Payment...' : 'Pay 1 USDC (Gasless x402)'}
+{isPayment ? 'Processing Payment...' : (recurringIntent ? 'Pay 0.1 USDC (Recurring)' : 'Authorize Recurring Payments')}
         </button>
       </div>
 
@@ -425,32 +422,34 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
         </div>
       )}
 
-      {/* Payment Details (when processing) */}
-      {paymentInfo && (
+      {/* Payment Details (when processing or authorized) */}
+      {(recurringIntent || isPayment) && (
         <div style={{
           marginTop: '24px',
           padding: '16px',
-          backgroundColor: '#eff6ff',
-          border: '1px solid #bfdbfe',
+          backgroundColor: isPayment ? '#fef3c7' : '#f0f9ff',
+          border: `1px solid ${isPayment ? '#f59e0b' : '#0284c7'}`,
           borderRadius: '8px'
         }}>
-          <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#2563eb', margin: '0 0 12px 0' }}>
-            Payment Authorization Details
+          <h4 style={{
+            fontSize: '14px',
+            fontWeight: '600',
+            color: isPayment ? '#92400e' : '#0369a1',
+            margin: '0 0 12px 0'
+          }}>
+            {isPayment ? 'Payment Processing...' : 'Recurring Payment Details'}
           </h4>
-          <div style={{ fontSize: '12px', color: '#1e40af', lineHeight: '1.4' }}>
+          <div style={{ fontSize: '12px', color: isPayment ? '#78350f' : '#075985', lineHeight: '1.4' }}>
             <p style={{ margin: '0 0 6px 0' }}>
               <strong>Service:</strong> {X402_CONFIG.SERVICE_NAME}
             </p>
             <p style={{ margin: '0 0 6px 0' }}>
-              <strong>Task:</strong> {X402_CONFIG.TASK_DESCRIPTION}
-            </p>
-            <p style={{ margin: '0 0 6px 0' }}>
-              <strong>Payment Amount:</strong> 1 USDC
+              <strong>Payment Amount:</strong> 0.1 USDC per transaction
             </p>
             <p style={{ margin: '0 0 6px 0' }}>
               <strong>Merchant Account:</strong>{' '}
               <code style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                backgroundColor: isPayment ? '#fed7aa' : '#bae6fd',
                 padding: '2px 4px',
                 borderRadius: '3px',
                 fontSize: '11px'
@@ -458,24 +457,20 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
                 {X402_CONFIG.MERCHANT_ADDRESS}
               </code>
             </p>
-            <p style={{ margin: '0 0 6px 0' }}>
-              <strong>Authorization Expires:</strong> {new Date(paymentInfo.intent.expires * 1000).toLocaleString()}
-            </p>
-            <p style={{ margin: '0 0 6px 0' }}>
-              <strong>Intent Nonce:</strong>{' '}
-              <code style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                padding: '2px 4px',
-                borderRadius: '3px',
-                fontSize: '11px'
-              }}>
-                {paymentInfo.intent.nonce.slice(0, 16)}...
-              </code>
-            </p>
+            {recurringIntent && (
+              <>
+                <p style={{ margin: '0 0 6px 0' }}>
+                  <strong>Authorization Expires:</strong> {new Date(recurringIntent.expires * 1000).toLocaleString()}
+                </p>
+                <p style={{ margin: '0 0 6px 0' }}>
+                  <strong>Payment Interval:</strong> No limit (can pay anytime)
+                </p>
+              </>
+            )}
             <p style={{ margin: '0' }}>
               <strong>Payment Contract:</strong>{' '}
               <code style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                backgroundColor: isPayment ? '#fed7aa' : '#bae6fd',
                 padding: '2px 4px',
                 borderRadius: '3px',
                 fontSize: '11px'
