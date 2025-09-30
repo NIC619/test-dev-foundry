@@ -3,7 +3,6 @@ import { useAccount, useSignTypedData } from 'wagmi';
 import { ethers } from 'ethers';
 import { CONTRACTS, X402_CONFIG } from '../constants/contracts';
 // Remove all imports from eip712 utils to avoid type pollution
-import { retryWithDelay } from '../utils/retry';
 
 declare global {
   interface Window {
@@ -33,6 +32,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
   const [isPayment, setIsPayment] = useState(false);
   const [paymentInfo, setPaymentInfo] = useState<{
     intent: {
+      user: string;
       task: string;
       token: string;
       maxPrice: string;
@@ -91,15 +91,25 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
       // Approve an amount greater (10 USDC) than per payment amount (1 USDC) for convenience
       const approvalAmount = ethers.parseUnits('10', 6);
 
-      const tx = await retryWithDelay(
-        () => usdcContract.approve(CONTRACTS.PAYMENT_FACILITATOR, approvalAmount),
-        3,
-        2000
-      );
+      // Try to approve with manual gas limit as fallback for rate-limited RPC
+      let tx;
+      try {
+        tx = await usdcContract.approve(CONTRACTS.PAYMENT_FACILITATOR, approvalAmount);
+      } catch (gasError: any) {
+        // If gas estimation fails, try with manual gas limit
+        if (gasError.message?.includes('estimateGas') || gasError.message?.includes('rate limit')) {
+          onShowInfo('Gas estimation failed, retrying approval with manual gas limit...');
+          tx = await usdcContract.approve(CONTRACTS.PAYMENT_FACILITATOR, approvalAmount, {
+            gasLimit: 100000 // Manual gas limit as fallback for approval
+          });
+        } else {
+          throw gasError;
+        }
+      }
 
       onShowInfo('Approval transaction submitted. Waiting for confirmation...');
 
-      await retryWithDelay(() => tx.wait(), 3, 1000);
+      await tx.wait();
 
       onShowSuccess('USDC approval successful! You can now make x402 payments.');
       await checkAllowance();
@@ -109,8 +119,8 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
 
       if (errorMessage.toLowerCase().includes('user rejected')) {
         onShowError('Transaction was rejected by user');
-      } else if (errorMessage.toLowerCase().includes('429') || errorMessage.toLowerCase().includes('too many requests')) {
-        onShowError('RPC rate limit exceeded. Please wait a moment and try again.');
+      } else if (errorMessage.toLowerCase().includes('429') || errorMessage.toLowerCase().includes('too many requests') || errorMessage.toLowerCase().includes('rate limit')) {
+        onShowError(`RPC rate limit exceeded: ${errorMessage}`);
       } else {
         onShowError(`Approval failed: ${errorMessage}`);
       }
@@ -143,6 +153,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
       const taskHash = ethers.keccak256(ethers.toUtf8Bytes(X402_CONFIG.TASK_DESCRIPTION));
 
       const intent = {
+        user: address,
         task: taskHash,
         token: CONTRACTS.USDC,
         maxPrice: X402_CONFIG.PAYMENT_AMOUNT,
@@ -169,6 +180,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
         },
         types: {
           IntentMandate: [
+            { name: 'user', type: 'address' },
             { name: 'task', type: 'bytes32' },
             { name: 'token', type: 'address' },
             { name: 'maxPrice', type: 'uint256' },
@@ -178,6 +190,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
         },
         primaryType: 'IntentMandate',
         message: {
+          user: intent.user as `0x${string}`,
           task: intent.task as `0x${string}`,
           token: intent.token as `0x${string}`,
           maxPrice: BigInt(intent.maxPrice),
@@ -214,7 +227,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
 
       const facilitatorAbi = [
         `function executePurchase(
-          tuple(bytes32 task, address token, uint256 maxPrice, uint256 expires, uint256 nonce) intent,
+          tuple(address user, bytes32 task, address token, uint256 maxPrice, uint256 expires, uint256 nonce) intent,
           tuple(address merchant, address token, uint256 amount) cart,
           bytes userSignature,
           bytes cartSignature
@@ -227,15 +240,25 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
         agentWallet
       );
 
-      const tx = await retryWithDelay(
-        () => facilitatorContract.executePurchase(intent, cart, userSignature, cartSignature),
-        3,
-        2000
-      );
+      // Try to execute with manual gas limit as fallback for rate-limited RPC
+      let tx;
+      try {
+        tx = await facilitatorContract.executePurchase(intent, cart, userSignature, cartSignature);
+      } catch (gasError: any) {
+        // If gas estimation fails, try with manual gas limit
+        if (gasError.message?.includes('estimateGas') || gasError.message?.includes('rate limit')) {
+          onShowInfo('Gas estimation failed, retrying with manual gas limit...');
+          tx = await facilitatorContract.executePurchase(intent, cart, userSignature, cartSignature, {
+            gasLimit: 300000 // Manual gas limit as fallback
+          });
+        } else {
+          throw gasError;
+        }
+      }
 
       onShowInfo('Payment transaction submitted. Waiting for confirmation...');
 
-      await retryWithDelay(() => tx.wait(), 3, 1000);
+      await tx.wait();
 
       onShowSuccess(`Successfully paid 1 USDC for ${X402_CONFIG.SERVICE_NAME} access (gasless)! View transaction: https://testnet-explorer-unifi.puffer.fi/tx/${tx.hash}`);
       await checkAllowance(); // Refresh allowance
@@ -249,8 +272,8 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
 
       if (msg.includes('user rejected')) {
         cleanError = 'Transaction was rejected by user';
-      } else if (msg.includes('429') || msg.includes('too many requests')) {
-        cleanError = 'RPC rate limit exceeded. Please wait a moment and try again.';
+      } else if (msg.includes('429') || msg.includes('too many requests') || msg.includes('rate limit')) {
+        cleanError = `RPC rate limit exceeded: ${errorMessage}`;
       } else if (msg.includes('insufficient')) {
         cleanError = 'Insufficient funds or allowance for payment';
       } else if (msg.includes('intent expired')) {

@@ -9,17 +9,13 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @title PaymentFacilitator
  * @author DCentral Labs
  * @notice This contract is the core of the delegated agent payment flow.
- * It is a user-specific contract that holds an ERC20 allowance and executes purchases
- * on the user's behalf, but only when authorized by a valid, user-signed EIP-712 message.
- * This allows a third-party "agent" to submit transactions on behalf of the user,
- * paying the gas fees, without having direct control over the user's funds.
+ * It is a permissionless contract that executes purchases on behalf of any user
+ * when authorized by a valid, user-signed EIP-712 message.
+ * This allows a third-party "agent" to submit transactions on behalf of users,
+ * paying the gas fees, without having direct control over the users' funds.
  */
 contract PaymentFacilitator is EIP712 {
     // --- State Variables ---
-
-    // @notice The user who deployed this contract and is authorized to sign intents.
-    // Only signatures from this address will be considered valid.
-    address public owner;
 
     // @notice A mapping to store used nonces (specifically, the hash of the intent).
     // This is a critical security measure to prevent replay attacks, where an agent
@@ -34,7 +30,7 @@ contract PaymentFacilitator is EIP712 {
     // @notice The EIP-712 type hash for the IntentMandate struct.
     // This is the keccak256 hash of the struct's definition string.
     bytes32 public constant INTENT_MANDATE_TYPEHASH = keccak256(
-        "IntentMandate(bytes32 task,address token,uint256 maxPrice,uint256 expires,uint256 nonce)"
+        "IntentMandate(address user,bytes32 task,address token,uint256 maxPrice,uint256 expires,uint256 nonce)"
     );
 
     // @notice The EIP-712 type hash for the CartMandate struct.
@@ -50,6 +46,7 @@ contract PaymentFacilitator is EIP712 {
      * to the agent. The agent can only act within these predefined boundaries.
      */
     struct IntentMandate {
+        address user;       // The user address that must sign this intent.
         bytes32 task;       // A hash of the human-readable description of the task.
         address token;      // The token address for the purchase (e.g., USDC).
         uint256 maxPrice;   // The maximum amount the agent is allowed to spend.
@@ -93,13 +90,13 @@ contract PaymentFacilitator is EIP712 {
     error InvalidToken();         // The cart token does not match the intent token.
 
     /**
-     * @notice The constructor sets the contract owner and the EIP-712 domain.
+     * @notice The constructor sets the EIP-712 domain.
      * @dev The EIP712 constructor takes the domain `name` and `version`, which
      * are critical for creating the domain separator. These must match the values
-     * used by the off-chain signing client (Go backend in this case).
+     * used by the off-chain signing client.
      */
     constructor() EIP712("PaymentFacilitator", "1") {
-        owner = msg.sender;
+        // No owner needed - contract is permissionless
     }
 
     /**
@@ -121,10 +118,10 @@ contract PaymentFacilitator is EIP712 {
         bytes calldata userSignature,
         bytes calldata cartSignature
     ) external {
-        // 1. Verify the user's signature to ensure the intent was authorized by the owner.
+        // 1. Verify the user's signature matches the user specified in the intent.
         bytes32 intentHash = _hashIntentMandate(intent);
         address userSigner = ECDSA.recover(intentHash, userSignature);
-        if (userSigner != owner) {
+        if (userSigner != intent.user) {
             revert InvalidSignature();
         }
 
@@ -153,9 +150,9 @@ contract PaymentFacilitator is EIP712 {
         usedNonces[intentHash] = true;
 
         // 5. Execute the payment.
-        // This call will only succeed if the user (owner) has previously called
+        // This call will only succeed if the user has previously called
         // `approve(address(this), amount)` on the token contract.
-        IERC20(cart.token).transferFrom(owner, cart.merchant, cart.amount);
+        IERC20(cart.token).transferFrom(intent.user, cart.merchant, cart.amount);
 
         // 6. Emit an event to log the successful purchase.
         emit PurchaseExecuted(cart.merchant, cart.token, cart.amount, intentHash);
@@ -173,6 +170,7 @@ contract PaymentFacilitator is EIP712 {
         bytes32 structHash = keccak256(
             abi.encode(
                 INTENT_MANDATE_TYPEHASH,
+                intent.user,
                 intent.task,
                 intent.token,
                 intent.maxPrice,

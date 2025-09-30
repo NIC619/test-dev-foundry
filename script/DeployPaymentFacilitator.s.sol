@@ -14,6 +14,5 @@ contract DeployPaymentFacilitatorScript is Script {
         vm.stopBroadcast();
 
         console2.log("PaymentFacilitator deployed at:", address(deployed));
-        console2.log("Owner (msg.sender):", vm.addr(deployerPrivateKey));
     }
 }
