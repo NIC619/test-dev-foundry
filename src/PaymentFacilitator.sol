@@ -22,6 +22,10 @@ contract PaymentFacilitator is EIP712 {
     // could try to execute the same valid purchase multiple times.
     mapping(bytes32 => bool) public usedNonces;
 
+    // @notice A mapping to store the last execution time for recurring payments.
+    // Maps the hash of recurring intent to its last execution timestamp.
+    mapping(bytes32 => uint256) public lastExecutionTime;
+
     // --- EIP-712 Type Hashes ---
     // This section defines the EIP-712 structure for signing. It's crucial that
     // these definitions match exactly across the Solidity contract, the Go backend,
@@ -36,6 +40,11 @@ contract PaymentFacilitator is EIP712 {
     // @notice The EIP-712 type hash for the CartMandate struct.
     bytes32 public constant CART_MANDATE_TYPEHASH = keccak256(
         "CartMandate(address merchant,address token,uint256 amount)"
+    );
+
+    // @notice The EIP-712 type hash for the RecurringIntentMandate struct.
+    bytes32 public constant RECURRING_INTENT_MANDATE_TYPEHASH = keccak256(
+        "RecurringIntentMandate(address user,address merchant,address token,uint256 amount,uint256 interval,uint256 expires)"
     );
 
     // --- Structs ---
@@ -64,6 +73,19 @@ contract PaymentFacilitator is EIP712 {
         uint256 amount;     // The exact amount to pay (must be <= maxPrice).
     }
 
+    /**
+     * @notice Represents a recurring payment authorization from user to merchant.
+     * This allows direct payments without requiring merchant signatures for each payment.
+     */
+    struct RecurringIntentMandate {
+        address user;       // The user address that must sign this intent.
+        address merchant;   // The merchant address to pay directly.
+        address token;      // The token address for the payment (e.g., USDC).
+        uint256 amount;     // The exact amount to pay for each execution.
+        uint256 interval;   // Minimum seconds between executions (0 = no limit).
+        uint256 expires;    // Unix timestamp when this intent is no longer valid.
+    }
+
     // --- Events ---
 
     /**
@@ -80,6 +102,22 @@ contract PaymentFacilitator is EIP712 {
         bytes32 indexed intentNonce
     );
 
+    /**
+     * @notice Emitted when a recurring payment is successfully executed.
+     * @param user The user address that authorized the payment.
+     * @param merchant The address of the merchant that was paid.
+     * @param token The address of the token used for payment.
+     * @param amount The amount of the token that was transferred.
+     * @param recurringIntentHash The hash of the recurring intent that was executed.
+     */
+    event RecurringPaymentExecuted(
+        address indexed user,
+        address indexed merchant,
+        address indexed token,
+        uint256 amount,
+        bytes32 recurringIntentHash
+    );
+
     // --- Errors ---
 
     error InvalidSignature();     // The user's signature does not match the owner.
@@ -88,6 +126,7 @@ contract PaymentFacilitator is EIP712 {
     error PriceTooHigh();         // The cart amount exceeds the intent's maxPrice.
     error NonceAlreadyUsed();     // The intent's nonce has already been used.
     error InvalidToken();         // The cart token does not match the intent token.
+    error IntervalNotMet();       // The minimum interval between executions has not been met.
 
     /**
      * @notice The constructor sets the EIP-712 domain.
@@ -159,6 +198,59 @@ contract PaymentFacilitator is EIP712 {
     }
 
     /**
+     * @notice Execute a recurring payment directly from user to merchant.
+     * @dev This function allows recurring payments without requiring merchant signatures.
+     * The user signs once to authorize recurring payments, and agents can execute them
+     * according to the specified interval and expiration rules.
+     * @param recurringIntent The user's signed RecurringIntentMandate.
+     * @param userSignature The EIP-712 signature from the user for the recurring intent.
+     */
+    function executeRecurringPayment(
+        RecurringIntentMandate calldata recurringIntent,
+        bytes calldata userSignature
+    ) external {
+        // 1. Verify the user's signature matches the user specified in the intent.
+        bytes32 recurringIntentHash = _hashRecurringIntentMandate(recurringIntent);
+        address userSigner = ECDSA.recover(recurringIntentHash, userSignature);
+        if (userSigner != recurringIntent.user) {
+            revert InvalidSignature();
+        }
+
+        // 2. Check if the intent has expired.
+        if (block.timestamp > recurringIntent.expires) {
+            revert IntentExpired();
+        }
+
+        // 3. Check interval requirement if specified (0 means no interval limit).
+        if (recurringIntent.interval > 0) {
+            uint256 lastExecution = lastExecutionTime[recurringIntentHash];
+            if (lastExecution > 0 && block.timestamp < lastExecution + recurringIntent.interval) {
+                revert IntervalNotMet();
+            }
+        }
+
+        // 4. Update the last execution time.
+        lastExecutionTime[recurringIntentHash] = block.timestamp;
+
+        // 5. Execute the payment directly from user to merchant.
+        // This call will only succeed if the user has sufficient allowance and balance.
+        IERC20(recurringIntent.token).transferFrom(
+            recurringIntent.user,
+            recurringIntent.merchant,
+            recurringIntent.amount
+        );
+
+        // 6. Emit an event to log the successful recurring payment.
+        emit RecurringPaymentExecuted(
+            recurringIntent.user,
+            recurringIntent.merchant,
+            recurringIntent.token,
+            recurringIntent.amount,
+            recurringIntentHash
+        );
+    }
+
+    /**
      * @notice An internal helper function to compute the full EIP-712 hash for the IntentMandate.
      * @dev This function first calculates the hash of the struct data and then combines
      * it with the domain separator to produce the final digest that gets signed.
@@ -194,6 +286,27 @@ contract PaymentFacilitator is EIP712 {
                 cart.merchant,
                 cart.token,
                 cart.amount
+            )
+        );
+        return _hashTypedDataV4(structHash);
+    }
+
+    /**
+     * @notice An internal helper function to compute the full EIP-712 hash for the RecurringIntentMandate.
+     * @dev This follows the same EIP-712 hashing process as other mandate types.
+     */
+    function _hashRecurringIntentMandate(
+        RecurringIntentMandate calldata recurringIntent
+    ) internal view returns (bytes32) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                RECURRING_INTENT_MANDATE_TYPEHASH,
+                recurringIntent.user,
+                recurringIntent.merchant,
+                recurringIntent.token,
+                recurringIntent.amount,
+                recurringIntent.interval,
+                recurringIntent.expires
             )
         );
         return _hashTypedDataV4(structHash);
