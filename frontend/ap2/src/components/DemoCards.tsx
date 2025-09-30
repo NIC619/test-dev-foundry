@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X402Payment } from './X402Payment';
+import { AutomatedPurchasing } from './AutomatedPurchasing';
 
 interface DemoCardsProps {
   onShowError: (message: string) => void;
@@ -15,13 +16,14 @@ export const DemoCards: React.FC<DemoCardsProps> = ({
   onBalanceRefresh
 }) => {
   const [showX402Payment, setShowX402Payment] = useState(false);
+  const [showAutomatedPurchasing, setShowAutomatedPurchasing] = useState(false);
 
   const handleX402Payment = () => {
     setShowX402Payment(true);
   };
 
   const handleItemPurchasing = () => {
-    alert('Item Purchasing Demo - Coming Soon!');
+    setShowAutomatedPurchasing(true);
   };
 
   const handlePlaceholder = () => {
@@ -237,6 +239,57 @@ export const DemoCards: React.FC<DemoCardsProps> = ({
             </button>
 
             <X402Payment
+              onShowError={onShowError}
+              onShowSuccess={onShowSuccess}
+              onShowInfo={onShowInfo}
+              onBalanceRefresh={onBalanceRefresh}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Automated Purchasing Modal */}
+      {showAutomatedPurchasing && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            maxWidth: '900px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setShowAutomatedPurchasing(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: '#6b7280',
+                zIndex: 1001
+              }}
+            >
+              ×
+            </button>
+
+            <AutomatedPurchasing
               onShowError={onShowError}
               onShowSuccess={onShowSuccess}
               onShowInfo={onShowInfo}
