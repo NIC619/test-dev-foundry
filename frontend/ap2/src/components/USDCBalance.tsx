@@ -103,16 +103,16 @@ export const USDCBalance = forwardRef<USDCBalanceRef, USDCBalanceProps>(({
     try {
       setIsMinting(true);
 
-      // Using a relayer private key for minting (from gasless example)
-      const relayerPrivateKey = '0x7bf22e1815f25b864be82bb9cad2f6b51a108cd25b90e7de3f05c3ccf16341d8';
+      // Using an agent private key for minting (from gasless example)
+      const agentPrivateKey = '0x7bf22e1815f25b864be82bb9cad2f6b51a108cd25b90e7de3f05c3ccf16341d8';
       const provider = new ethers.JsonRpcProvider('https://testnet-unifi-rpc.puffer.fi/');
-      const relayerWallet = new ethers.Wallet(relayerPrivateKey, provider);
+      const agentWallet = new ethers.Wallet(agentPrivateKey, provider);
 
       const tokenAbi = [
         'function mint(address to, uint256 amount) public',
         'function decimals() view returns (uint8)'
       ];
-      const tokenContract = new ethers.Contract(USDC_ADDRESS, tokenAbi, relayerWallet);
+      const tokenContract = new ethers.Contract(USDC_ADDRESS, tokenAbi, agentWallet);
 
       const decimals = await tokenContract.decimals();
       const parsedMintAmount = ethers.parseUnits(mintAmount, decimals);

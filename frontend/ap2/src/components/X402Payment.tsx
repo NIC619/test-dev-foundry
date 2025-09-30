@@ -126,7 +126,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
       return;
     }
 
-    // Note: Using relayer for gasless transactions - no user signer needed for execution
+    // Note: Using agent for gasless transactions - no user signer needed for execution
     // Only need wallet connected for EIP712 signing
 
     if (parseFloat(allowance) < 1) {
@@ -206,11 +206,11 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
         cart
       );
 
-      onShowInfo('Executing payment transaction via relayer...');
+      onShowInfo('Executing payment transaction via agent...');
 
-      // Execute the payment through PaymentFacilitator using relayer
+      // Execute the payment through PaymentFacilitator using agent
       const provider = new ethers.JsonRpcProvider('https://testnet-unifi-rpc.puffer.fi/');
-      const relayerWallet = new ethers.Wallet(X402_CONFIG.RELAYER_PRIVATE_KEY, provider);
+      const agentWallet = new ethers.Wallet(X402_CONFIG.AGENT_PRIVATE_KEY, provider);
 
       const facilitatorAbi = [
         `function executePurchase(
@@ -224,7 +224,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
       const facilitatorContract = new ethers.Contract(
         CONTRACTS.PAYMENT_FACILITATOR,
         facilitatorAbi,
-        relayerWallet
+        agentWallet
       );
 
       const tx = await retryWithDelay(
