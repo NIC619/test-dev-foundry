@@ -6,6 +6,7 @@ import { USDCBalance, USDCBalanceRef } from './components/USDCBalance'
 import { DemoCards } from './components/DemoCards'
 import { ToastContainer } from './components/ToastContainer'
 import { useToast } from './hooks/useToast'
+import UniFiLogo from './UniFi_Black.svg'
 import './App.css';
 
 const queryClient = new QueryClient()
@@ -19,6 +20,15 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <div className="App">
           <div style={{minHeight: '100vh', paddingTop: '32px', paddingBottom: '32px'}}>
+            {/* Logo in top left corner */}
+            <div style={{position: 'absolute', top: '20px', left: '20px'}}>
+              <img
+                src={UniFiLogo}
+                alt="UniFi Logo"
+                style={{height: '40px', width: 'auto'}}
+              />
+            </div>
+
             <div className="container">
               <div style={{textAlign: 'center', marginBottom: '32px'}}>
                 <h1 style={{fontSize: '36px', fontWeight: 'bold', color: '#111827', marginBottom: '8px'}}>

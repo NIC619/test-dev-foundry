@@ -140,7 +140,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
 
       // Phase 1: Sign recurring intent (only needed once)
       if (!recurringIntent || !recurringSignature) {
-        onShowInfo('Please sign the recurring payment authorization...');
+        onShowInfo('Please sign the payment authorization...');
 
         const expires = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // 24 hours from now
 
@@ -184,12 +184,12 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
 
         setRecurringIntent(intent);
         setRecurringSignature(userSignature);
-        onShowSuccess('Recurring payment authorization signed! You can now pay multiple times.');
+        onShowSuccess('Payment authorization signed! You can now pay multiple times.');
         return;
       }
 
       // Phase 2: Execute payment using stored signature
-      onShowInfo('Executing recurring payment via agent...');
+      onShowInfo('Executing payment via agent...');
 
       // Execute the payment through PaymentFacilitator using agent
       const provider = new ethers.JsonRpcProvider('https://testnet-unifi-rpc.puffer.fi/');
@@ -351,7 +351,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
           fontWeight: '600',
           color: recurringIntent ? '#0369a1' : '#6b7280'
         }}>
-          Recurring Payment Authorization
+          Payment Authorization
         </p>
         <p style={{
           margin: 0,
@@ -404,7 +404,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
             opacity: (isPayment || !isConnected || !hasEnoughAllowance) ? 0.5 : 1
           }}
         >
-{isPayment ? 'Processing Payment...' : (recurringIntent ? 'Pay 0.1 USDC (Recurring)' : 'Authorize Recurring Payments')}
+{isPayment ? 'Processing Payment...' : (recurringIntent ? 'Pay 0.1 USDC' : 'Authorize Payments')}
         </button>
       </div>
 
@@ -444,7 +444,7 @@ export const X402Payment: React.FC<X402PaymentProps> = ({
               <strong>Service:</strong> {X402_CONFIG.SERVICE_NAME}
             </p>
             <p style={{ margin: '0 0 6px 0' }}>
-              <strong>Payment Amount:</strong> 0.1 USDC per transaction
+              <strong>Payment Amount:</strong> 0.1 USDC per access
             </p>
             <p style={{ margin: '0 0 6px 0' }}>
               <strong>Merchant Account:</strong>{' '}

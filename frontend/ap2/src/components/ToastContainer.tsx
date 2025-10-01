@@ -70,7 +70,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onHideTo
       display: 'flex',
       flexDirection: 'column',
       gap: '12px',
-      maxWidth: '600px'
+      maxWidth: '400px'
     }}>
       {toasts.map((toast) => {
         const styles = getTypeStyles(toast.type);
@@ -86,8 +86,8 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onHideTo
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
               animation: 'slideIn 0.3s ease-out',
               fontFamily: 'inherit',
-              minWidth: '500px',
-              maxWidth: '700px',
+              minWidth: '350px',
+              maxWidth: '450px',
               maxHeight: 'none',
               overflow: 'visible'
             }}
