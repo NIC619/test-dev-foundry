@@ -1,18 +1,29 @@
 import { createPublicClient, http } from 'viem';
 import type { BlockInfo, RpcEndpoint } from '../types';
 
+// Validate required RPC endpoint environment variables
+if (!process.env.REACT_APP_GATEWAY_RPC_URL) {
+  throw new Error('REACT_APP_GATEWAY_RPC_URL is not set. Please configure it in your .env file.');
+}
+if (!process.env.REACT_APP_MAIN_NODE_RPC_URL) {
+  throw new Error('REACT_APP_MAIN_NODE_RPC_URL is not set. Please configure it in your .env file.');
+}
+if (!process.env.REACT_APP_TEE_NODE_RPC_URL) {
+  throw new Error('REACT_APP_TEE_NODE_RPC_URL is not set. Please configure it in your .env file.');
+}
+
 export const RPC_ENDPOINTS: RpcEndpoint[] = [
   {
     name: 'Gateway Endpoint',
-    url: 'https://testnet-unifi-rpc.puffer.fi/',
+    url: process.env.REACT_APP_GATEWAY_RPC_URL,
   },
   {
     name: 'Main Node Endpoint',
-    url: 'http://34.51.145.209:8545',
+    url: process.env.REACT_APP_MAIN_NODE_RPC_URL,
   },
   {
     name: 'TEE Node Endpoint',
-    url: 'http://34.1.254.59:8545',
+    url: process.env.REACT_APP_TEE_NODE_RPC_URL,
   },
 ];
 

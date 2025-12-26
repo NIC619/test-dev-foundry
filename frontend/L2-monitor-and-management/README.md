@@ -6,16 +6,13 @@ A comprehensive admin dashboard for monitoring and managing OP Stack chain prede
 
 ### Block Monitor
 - **Real-time block tracking** across multiple RPC endpoints
-- **Multi-endpoint support**:
-  - Gateway Endpoint: `https://testnet-unifi-rpc.puffer.fi/`
-  - Main Node: `http://34.51.145.209:8545`
-  - TEE Node: `http://34.1.254.59:8545`
+- **Multi-endpoint support**: Configure multiple RPC endpoints in `src/utils/rpc.ts`
 - **Block tags**: Query `unsafe`, `safe`, and `finalized` blocks
 - **Auto-refresh**: 5-second refresh interval for real-time updates
 - **Block details**: Number, hash, timestamp, transaction count, miner, gas info
 
 ### Predeploys Management
-- **Query predeploy contract info**: View owner, balance, and status
+- **Query predeploy contract info**: View owner/admin, implementation address, balance, and status
 - **Filter by category**:
   - Bridge & Messaging
   - Fee Vaults
@@ -23,8 +20,15 @@ A comprehensive admin dashboard for monitoring and managing OP Stack chain prede
   - System Contracts
   - Governance & Attestation
 - **Management features** (for manageable contracts):
-  - Transfer ownership
-  - Withdraw funds (for vault contracts)
+  - **Transfer Admin/Owner**: Transfer proxy admin or contract ownership
+    - For ProxyAdmin: Transfer ownership directly
+    - For ProxyAdmin-managed contracts: Change admin via ProxyAdmin contract
+  - **Upgrade Implementation**: Upgrade contract implementation via ProxyAdmin
+  - **Withdraw Funds**: Withdraw ETH from vault contracts
+- **Smart ProxyAdmin routing**:
+  - Automatically detects if contract is managed by ProxyAdmin (0x4200...0018)
+  - Routes admin transfer and upgrade calls through ProxyAdmin contract
+  - Generates appropriate calldata for multisig/DAO execution
 - **Smart authorization handling**:
   - If owner is an EOA: Check wallet connection
   - If owner is a contract (multisig, DAO): Present calldata for transaction crafting
@@ -43,12 +47,24 @@ npm install
 
 ### Configuration
 
-Edit `src/config/wagmi.ts` to update:
+1. **Environment Variables**: Create a `.env` file in the project root (use `.env.example` as a template):
+
+```bash
+# Main RPC URL for contract interactions
+REACT_APP_RPC_URL=http://your-main-rpc-url
+
+# Block Monitor RPC Endpoints
+REACT_APP_GATEWAY_RPC_URL=https://your-gateway-rpc-url
+REACT_APP_MAIN_NODE_RPC_URL=http://your-main-node-rpc-url
+REACT_APP_TEE_NODE_RPC_URL=http://your-tee-node-rpc-url
+```
+
+2. **Wagmi Configuration**: Edit `src/config/wagmi.ts` to update:
 - Chain ID (currently set to 1337)
 - RPC endpoints
 - Chain details
 
-Edit `src/config/predeploys.ts` to add/remove predeploy contracts:
+3. **Predeploy Contracts**: Edit `src/config/predeploys.ts` to add/remove predeploy contracts:
 
 ```typescript
 {
@@ -111,10 +127,14 @@ src/
 - `RPC_ENDPOINTS` - List of all configured RPC endpoints
 
 ### Contract Utilities (`src/utils/contracts.ts`)
-- `getContractOwner()` - Get owner address of a contract
+- `getContractOwner()` - Get owner/admin address of a contract (handles ProxyAdmin specially)
+- `getImplementation()` - Get implementation address of a proxy contract
 - `getBalance()` - Get ETH balance of an address
-- `getContractInfo()` - Get owner and balance info
+- `getContractInfo()` - Get owner, implementation, and balance info
+- `getViewFunctionData()` - Fetch view function results from contracts
 - `generateTransferOwnershipCalldata()` - Generate calldata for ownership transfer
+- `generateChangeProxyAdminCalldata()` - Generate calldata for ProxyAdmin.changeProxyAdmin()
+- `generateUpgradeCalldata()` - Generate calldata for ProxyAdmin.upgrade()
 - `generateWithdrawCalldata()` - Generate calldata for withdraw function
 - `isValidAddress()` - Validate Ethereum address format
 
@@ -130,8 +150,15 @@ src/
 1. Navigate to the "Predeploys" tab
 2. Connect your wallet using the wallet connection button
 3. Filter contracts by category or show only manageable ones
-4. Click a contract card to select it
-5. Click "Transfer Owner" or "Withdraw" buttons
+4. View contract information:
+   - Owner/Admin address (with visual indicator if you own it)
+   - Implementation address (for proxy contracts)
+   - Balance (for vault contracts)
+   - Contract-specific view function data
+5. Click action buttons to manage contracts:
+   - **Transfer Owner/Admin**: Change contract ownership or admin
+   - **Upgrade Impl**: Upgrade contract implementation (not available for ProxyAdmin)
+   - **Withdraw**: Withdraw funds from vault contracts
 6. For EOA owners:
    - Verify you are the owner (displayed on card)
    - Copy the calldata and execute the transaction from your wallet
@@ -141,15 +168,44 @@ src/
 
 ## Management Actions
 
-### Transfer Ownership
-- **For EOA Owner**: Must be the connected wallet
-- **For Contract Owner**: Calldata provided for multisig/DAO to craft transaction
-- **Calldata Function**: `transferOwnership(address newOwner)`
+### Transfer Admin/Owner
+
+#### For ProxyAdmin Contract
+- **Button**: "Transfer Owner"
+- **Target**: ProxyAdmin contract itself
+- **Function**: `transferOwnership(address newOwner)`
+- **Authorization**: Must be current owner (EOA or multisig)
+
+#### For ProxyAdmin-Managed Contracts
+- **Button**: "Transfer Admin"
+- **Detection**: Automatically detects if admin is ProxyAdmin (0x4200...0018)
+- **Target**: ProxyAdmin contract
+- **Function**: `changeProxyAdmin(address proxy, address newAdmin)`
+- **Authorization**: Must be ProxyAdmin owner (EOA or multisig)
+
+#### For Other Contracts
+- **Button**: "Transfer Admin"
+- **Target**: Contract itself
+- **Function**: `transferOwnership(address newOwner)`
+- **Authorization**: Must be current owner (EOA or multisig)
+
+### Upgrade Implementation
+- **Available for**: All manageable contracts except ProxyAdmin
+- **Detection**: Automatically detects if contract is managed by ProxyAdmin
+- **Target**: ProxyAdmin contract
+- **Function**: `upgrade(address proxy, address implementation)`
+- **Authorization**: Must be ProxyAdmin owner (EOA or multisig)
+- **Input**: New implementation contract address
 
 ### Withdraw Funds
+- **Available for**: Vault contracts (SequencerFeeVault, BaseFeeVault, L1FeeVault, OperatorFeeVault)
+- **Function**: `withdraw()`
+- **Authorization**: Must be current owner (EOA or multisig)
+- **Action**: Withdraws all accumulated ETH to the configured recipient
+
+### Authorization Handling
 - **For EOA Owner**: Must be the connected wallet
-- **For Contract Owner**: Calldata provided for multisig/DAO to craft transaction
-- **Calldata Function**: `withdraw()`
+- **For Contract Owner (multisig/DAO)**: Calldata provided for transaction crafting
 
 ## Notes
 
@@ -177,14 +233,24 @@ Edit `src/config/predeploys.ts`:
 ```
 
 ### Adding New RPC Endpoints
-Edit `src/utils/rpc.ts`:
+1. Add the environment variable to your `.env` file:
+```bash
+REACT_APP_YOUR_ENDPOINT_RPC_URL=https://your-rpc-url
+```
 
+2. Add validation and endpoint configuration in `src/utils/rpc.ts`:
 ```typescript
+// Add validation
+if (!process.env.REACT_APP_YOUR_ENDPOINT_RPC_URL) {
+  throw new Error('REACT_APP_YOUR_ENDPOINT_RPC_URL is not set.');
+}
+
+// Add to RPC_ENDPOINTS array
 export const RPC_ENDPOINTS: RpcEndpoint[] = [
   // ... existing endpoints
   {
     name: 'Your Endpoint',
-    url: 'https://your-rpc-url/',
+    url: process.env.REACT_APP_YOUR_ENDPOINT_RPC_URL,
   },
 ];
 ```

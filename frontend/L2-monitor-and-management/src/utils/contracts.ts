@@ -1,5 +1,11 @@
 import { createPublicClient, http, type Abi } from 'viem';
 
+// RPC URL from environment variable
+if (!process.env.REACT_APP_RPC_URL) {
+  throw new Error('REACT_APP_RPC_URL is not set. Please create a .env file with REACT_APP_RPC_URL configured.');
+}
+const DEFAULT_RPC_URL = process.env.REACT_APP_RPC_URL;
+
 // ABI for Proxy contracts (to get admin)
 export const PROXY_ABI = [
   {
@@ -321,7 +327,7 @@ export interface ContractInfo {
 
 export async function getContractOwner(
   address: string,
-  rpcUrl: string = 'http://34.51.145.209:8545',
+  rpcUrl: string = DEFAULT_RPC_URL,
 ): Promise<string | null> {
   const client = createPublicClient({
     transport: http(rpcUrl),
@@ -368,7 +374,7 @@ export async function getContractOwner(
 
 export async function getImplementation(
   address: string,
-  rpcUrl: string = 'http://34.51.145.209:8545',
+  rpcUrl: string = DEFAULT_RPC_URL,
 ): Promise<string | null> {
   const client = createPublicClient({
     transport: http(rpcUrl),
@@ -388,7 +394,7 @@ export async function getImplementation(
 
 export async function getBalance(
   address: string,
-  rpcUrl: string = 'http://34.51.145.209:8545',
+  rpcUrl: string = DEFAULT_RPC_URL,
 ): Promise<bigint | null> {
   const client = createPublicClient({
     transport: http(rpcUrl),
@@ -524,7 +530,7 @@ function getAbiForContract(address: string): Abi | null {
 export async function getViewFunctionData(
   address: string,
   functionNames: string[],
-  rpcUrl: string = 'http://34.51.145.209:8545',
+  rpcUrl: string = DEFAULT_RPC_URL,
 ): Promise<Record<string, any>> {
   const client = createPublicClient({
     transport: http(rpcUrl),
