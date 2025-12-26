@@ -18,17 +18,24 @@ export interface BlockMonitorData {
   lastUpdated: Date | null;
 }
 
+export interface ViewFunction {
+  name: string;
+  label: string;
+}
+
 export interface Predeploy {
   name: string;
   address: string;
   description: string;
   category: 'bridge' | 'vault' | 'factory' | 'system' | 'governance';
   isManageable: boolean;
+  viewFunctions?: ViewFunction[]; // For contracts without owner
 }
 
 export interface PredployInfo extends Predeploy {
   owner?: string;
   balance?: bigint;
+  viewData?: Record<string, any>; // Results from view functions
   loading?: boolean;
   error?: string | null;
 }

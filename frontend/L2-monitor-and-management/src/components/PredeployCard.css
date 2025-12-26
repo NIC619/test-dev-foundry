@@ -94,6 +94,16 @@
   text-align: right;
 }
 
+.info-value.copyable {
+  color: #3b82f6;
+  transition: all 0.2s ease;
+}
+
+.info-value.copyable:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
 .owned-indicator {
   background-color: #dcfce7;
   border: 1px solid #86efac;
@@ -141,6 +151,15 @@
 
 .btn-transfer:hover:not(:disabled) {
   background-color: #2563eb;
+}
+
+.btn-upgrade {
+  background-color: #8b5cf6;
+  color: white;
+}
+
+.btn-upgrade:hover:not(:disabled) {
+  background-color: #7c3aed;
 }
 
 .btn-withdraw {

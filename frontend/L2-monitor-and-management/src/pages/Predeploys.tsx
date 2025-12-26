@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
 import { PREDEPLOYS } from '../config/predeploys';
-import { getContractInfo, generateTransferOwnershipCalldata, isValidAddress } from '../utils/contracts';
+import { getContractInfo, generateTransferOwnershipCalldata, generateChangeProxyAdminCalldata, generateUpgradeCalldata, isValidAddress } from '../utils/contracts';
 import PredeployCard from '../components/PredeployCard';
 import './Predeploys.css';
 
@@ -10,10 +10,11 @@ type FilterCategory = 'all' | 'bridge' | 'vault' | 'factory' | 'system' | 'gover
 export default function PredeploysPage() {
   const { address: connectedAddress, isConnected } = useAccount();
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
-  const [showOnlyManageable, setShowOnlyManageable] = useState(true);
+  const [showOnlyManageable, setShowOnlyManageable] = useState(false);
   const [selectedPredeploy, setSelectedPredeploy] = useState<string | null>(null);
-  const [actionType, setActionType] = useState<'transfer' | 'withdraw' | null>(null);
+  const [actionType, setActionType] = useState<'transfer' | 'withdraw' | 'upgrade' | null>(null);
   const [newOwner, setNewOwner] = useState('');
+  const [newImplementation, setNewImplementation] = useState('');
   const [actionInProgress, setActionInProgress] = useState(false);
 
   const filtered = PREDEPLOYS.filter(p => {
@@ -30,7 +31,6 @@ export default function PredeploysPage() {
 
     setActionInProgress(true);
     try {
-      const calldata = generateTransferOwnershipCalldata(newOwner);
       const contractInfo = await getContractInfo(predeploy.address);
 
       if (!contractInfo.owner) {
@@ -38,23 +38,59 @@ export default function PredeploysPage() {
         return;
       }
 
-      // Check if owner is EOA or contract
-      const isEOA = await isOwnerEOA(contractInfo.owner);
+      const PROXY_ADMIN_ADDRESS = '0x4200000000000000000000000000000000000018';
+      const isProxyAdminManaged = contractInfo.owner.toLowerCase() === PROXY_ADMIN_ADDRESS.toLowerCase();
 
-      if (isEOA) {
-        if (connectedAddress?.toLowerCase() !== contractInfo.owner.toLowerCase()) {
-          alert('You are not the owner of this contract');
+      let targetAddress: string;
+      let calldata: string;
+
+      if (isProxyAdminManaged && predeploy.name !== 'ProxyAdmin') {
+        // For contracts managed by ProxyAdmin, call changeProxyAdmin on ProxyAdmin contract
+        targetAddress = PROXY_ADMIN_ADDRESS;
+        calldata = generateChangeProxyAdminCalldata(predeploy.address, newOwner);
+
+        // Get the owner of ProxyAdmin contract
+        const proxyAdminInfo = await getContractInfo(PROXY_ADMIN_ADDRESS);
+        if (!proxyAdminInfo.owner) {
+          alert('Could not retrieve ProxyAdmin owner');
           return;
         }
-        // Execute transaction directly
-        alert('Execute this transaction from your wallet:\n\nTo: ' + predeploy.address + '\nData: ' + calldata);
+
+        const isEOA = await isOwnerEOA(proxyAdminInfo.owner);
+
+        if (isEOA) {
+          if (connectedAddress?.toLowerCase() !== proxyAdminInfo.owner.toLowerCase()) {
+            alert('You are not the owner of ProxyAdmin contract');
+            return;
+          }
+          alert('Execute this transaction from your wallet:\n\nTo: ' + targetAddress + '\nData: ' + calldata);
+        } else {
+          alert(
+            'ProxyAdmin is owned by a multisig or contract address.\n\nCalldata for multisig:\n' + calldata +
+              '\n\nTarget: ' +
+              targetAddress,
+          );
+        }
       } else {
-        // Owner is a contract (multisig, DAO, etc.)
-        alert(
-          'This contract is owned by a multisig or contract address.\n\nCalldata for multisig:\n' + calldata +
-            '\n\nTarget: ' +
-            predeploy.address,
-        );
+        // For ProxyAdmin or contracts not managed by ProxyAdmin
+        targetAddress = predeploy.address;
+        calldata = generateTransferOwnershipCalldata(newOwner);
+
+        const isEOA = await isOwnerEOA(contractInfo.owner);
+
+        if (isEOA) {
+          if (connectedAddress?.toLowerCase() !== contractInfo.owner.toLowerCase()) {
+            alert('You are not the owner of this contract');
+            return;
+          }
+          alert('Execute this transaction from your wallet:\n\nTo: ' + targetAddress + '\nData: ' + calldata);
+        } else {
+          alert(
+            'This contract is owned by a multisig or contract address.\n\nCalldata for multisig:\n' + calldata +
+              '\n\nTarget: ' +
+              targetAddress,
+          );
+        }
       }
 
       resetForm();
@@ -103,9 +139,70 @@ export default function PredeploysPage() {
     }
   };
 
+  const handleUpgrade = async (predeploy: typeof PREDEPLOYS[0]) => {
+    if (!isValidAddress(newImplementation)) {
+      alert('Invalid Ethereum address');
+      return;
+    }
+
+    setActionInProgress(true);
+    try {
+      const contractInfo = await getContractInfo(predeploy.address);
+
+      if (!contractInfo.owner) {
+        alert('Could not retrieve current admin');
+        return;
+      }
+
+      const PROXY_ADMIN_ADDRESS = '0x4200000000000000000000000000000000000018';
+      const isProxyAdminManaged = contractInfo.owner.toLowerCase() === PROXY_ADMIN_ADDRESS.toLowerCase();
+
+      let targetAddress: string;
+      let calldata: string;
+
+      if (isProxyAdminManaged && predeploy.name !== 'ProxyAdmin') {
+        // For contracts managed by ProxyAdmin, call upgrade on ProxyAdmin contract
+        targetAddress = PROXY_ADMIN_ADDRESS;
+        calldata = generateUpgradeCalldata(predeploy.address, newImplementation);
+
+        // Get the owner of ProxyAdmin contract
+        const proxyAdminInfo = await getContractInfo(PROXY_ADMIN_ADDRESS);
+        if (!proxyAdminInfo.owner) {
+          alert('Could not retrieve ProxyAdmin owner');
+          return;
+        }
+
+        const isEOA = await isOwnerEOA(proxyAdminInfo.owner);
+
+        if (isEOA) {
+          if (connectedAddress?.toLowerCase() !== proxyAdminInfo.owner.toLowerCase()) {
+            alert('You are not the owner of ProxyAdmin contract');
+            return;
+          }
+          alert('Execute this transaction from your wallet:\n\nTo: ' + targetAddress + '\nData: ' + calldata);
+        } else {
+          alert(
+            'ProxyAdmin is owned by a multisig or contract address.\n\nCalldata for multisig:\n' + calldata +
+              '\n\nTarget: ' +
+              targetAddress,
+          );
+        }
+      } else {
+        alert('This contract is not managed by ProxyAdmin. Direct upgrade not implemented.');
+      }
+
+      resetForm();
+    } catch (error) {
+      alert('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
   const resetForm = () => {
     setActionType(null);
     setNewOwner('');
+    setNewImplementation('');
     setSelectedPredeploy(null);
   };
 
@@ -133,9 +230,9 @@ export default function PredeploysPage() {
             <option value="all">All Categories</option>
             <option value="bridge">Bridge & Messaging</option>
             <option value="vault">Fee Vaults</option>
-            <option value="factory">Factories</option>
+            <option value="factory">Factories (omitted)</option>
             <option value="system">System</option>
-            <option value="governance">Governance & Attestation</option>
+            <option value="governance">Governance & Attestation (omitted)</option>
           </select>
         </div>
 
@@ -167,6 +264,10 @@ export default function PredeploysPage() {
               setSelectedPredeploy(predeploy.address);
               setActionType('withdraw');
             }}
+            onUpgradeClick={() => {
+              setSelectedPredeploy(predeploy.address);
+              setActionType('upgrade');
+            }}
             connectedAddress={connectedAddress}
           />
         ))}
@@ -177,7 +278,9 @@ export default function PredeploysPage() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>
-                {actionType === 'transfer' ? 'Transfer Ownership' : 'Withdraw Funds'}
+                {actionType === 'transfer'
+                  ? (PREDEPLOYS.find(p => p.address === selectedPredeploy)?.name === 'ProxyAdmin' ? 'Transfer Owner' : 'Transfer Admin')
+                  : actionType === 'upgrade' ? 'Upgrade Implementation' : 'Withdraw Funds'}
               </h2>
               <button className="close-btn" onClick={resetForm}>
                 ✕
@@ -188,13 +291,31 @@ export default function PredeploysPage() {
               {actionType === 'transfer' && (
                 <>
                   <div className="form-group">
-                    <label htmlFor="new-owner">New Owner Address</label>
+                    <label htmlFor="new-owner">
+                      {PREDEPLOYS.find(p => p.address === selectedPredeploy)?.name === 'ProxyAdmin' ? 'New Owner Address' : 'New Admin Address'}
+                    </label>
                     <input
                       id="new-owner"
                       type="text"
                       placeholder="0x..."
                       value={newOwner}
                       onChange={e => setNewOwner(e.target.value)}
+                      disabled={actionInProgress}
+                    />
+                  </div>
+                </>
+              )}
+
+              {actionType === 'upgrade' && (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="new-implementation">New Implementation Address</label>
+                    <input
+                      id="new-implementation"
+                      type="text"
+                      placeholder="0x..."
+                      value={newImplementation}
+                      onChange={e => setNewImplementation(e.target.value)}
                       disabled={actionInProgress}
                     />
                   </div>
@@ -223,14 +344,16 @@ export default function PredeploysPage() {
                   if (predeploy) {
                     if (actionType === 'transfer') {
                       handleTransferOwnership(predeploy);
+                    } else if (actionType === 'upgrade') {
+                      handleUpgrade(predeploy);
                     } else {
                       handleWithdraw(predeploy);
                     }
                   }
                 }}
-                disabled={actionInProgress || (actionType === 'transfer' && !newOwner)}
+                disabled={actionInProgress || (actionType === 'transfer' && !newOwner) || (actionType === 'upgrade' && !newImplementation)}
               >
-                {actionInProgress ? 'Processing...' : actionType === 'transfer' ? 'Transfer' : 'Withdraw'}
+                {actionInProgress ? 'Processing...' : actionType === 'transfer' ? 'Transfer' : actionType === 'upgrade' ? 'Upgrade' : 'Withdraw'}
               </button>
             </div>
           </div>
