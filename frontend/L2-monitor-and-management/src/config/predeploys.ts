@@ -95,6 +95,21 @@ export const PREDEPLOYS: Predeploy[] = [
       { name: 'withdrawalNetwork', label: 'Withdrawal Network' },
     ],
   },
+  {
+    name: 'UniFiFeeVault',
+    address: '0x420000000000000000000000000000000000002a',
+    description: 'Distributes fees between L2 Owner and UniFi Reward Distributor',
+    category: 'vault',
+    isManageable: true,
+    viewFunctions: [
+      { name: 'l2Owner', label: 'L2 Owner' },
+      { name: 'withdrawalNetworkL2Owner', label: 'Withdrawal Network L2 Owner' },
+      { name: 'percentageL2Owner', label: 'Percentage L2 Owner' },
+      { name: 'l1UniFiRewardDistributorContract', label: 'L1 UniFi Reward Distributor' },
+      { name: 'minWithdrawalAmount', label: 'Min Withdrawal Amount' },
+      { name: 'totalProcessed', label: 'Total Processed' },
+    ],
+  },
 
   // System Contracts
   {

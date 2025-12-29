@@ -258,8 +258,8 @@ function formatBalance(balance: bigint): string {
 }
 
 function formatViewData(value: any, functionName?: string): string {
-  // Special handling for withdrawalNetwork
-  if (functionName === 'withdrawalNetwork') {
+  // Special handling for withdrawalNetwork and withdrawalNetworkL2Owner
+  if (functionName === 'withdrawalNetwork' || functionName === 'withdrawalNetworkL2Owner') {
     const networkValue = typeof value === 'bigint' ? Number(value) : value;
     return networkValue === 0 ? 'L1' : 'L2';
   }

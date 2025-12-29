@@ -198,7 +198,7 @@ src/
 - **Input**: New implementation contract address
 
 ### Withdraw Funds
-- **Available for**: Vault contracts (SequencerFeeVault, BaseFeeVault, L1FeeVault, OperatorFeeVault)
+- **Available for**: Vault contracts (SequencerFeeVault, BaseFeeVault, L1FeeVault, OperatorFeeVault, UniFiFeeVault)
 - **Function**: `withdraw()`
 - **Authorization**: Must be current owner (EOA or multisig)
 - **Action**: Withdraws all accumulated ETH to the configured recipient
