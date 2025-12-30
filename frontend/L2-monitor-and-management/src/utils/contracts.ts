@@ -341,7 +341,8 @@ export async function getContractOwner(
   const lowerAddress = address.toLowerCase();
 
   // L1ChugSplashProxy contracts (like L1StandardBridge) use getOwner() with from: address(0)
-  const isL1ChugSplashProxy = lowerAddress === '0xa99a27d6f39630332e0f39c9fa3d2e0c0d76b3e7'; // L1StandardBridge
+  const l1StandardBridgeAddress = process.env.REACT_APP_L1_STANDARD_BRIDGE_ADDRESS?.toLowerCase();
+  const isL1ChugSplashProxy = l1StandardBridgeAddress && lowerAddress === l1StandardBridgeAddress;
 
   if (isL1ChugSplashProxy) {
     try {
@@ -407,7 +408,8 @@ export async function getImplementation(
   const lowerAddress = address.toLowerCase();
 
   // L1ChugSplashProxy contracts (like L1StandardBridge) use getImplementation() with from: address(0)
-  const isL1ChugSplashProxy = lowerAddress === '0xa99a27d6f39630332e0f39c9fa3d2e0c0d76b3e7'; // L1StandardBridge
+  const l1StandardBridgeAddress = process.env.REACT_APP_L1_STANDARD_BRIDGE_ADDRESS?.toLowerCase();
+  const isL1ChugSplashProxy = l1StandardBridgeAddress && lowerAddress === l1StandardBridgeAddress;
 
   if (isL1ChugSplashProxy) {
     try {
@@ -643,7 +645,8 @@ export async function getViewFunctionData(
   }
 
   // Special handling for DisputeGameFactory mappings
-  if (address.toLowerCase() === '0xc3566eb389ba4e6c378f6f0a7e99c32033aea9d4') {
+  const disputeGameFactoryAddress = process.env.REACT_APP_L1_DISPUTE_GAME_FACTORY_ADDRESS?.toLowerCase();
+  if (disputeGameFactoryAddress && address.toLowerCase() === disputeGameFactoryAddress) {
     const gameTypes = [
       { value: 0, name: 'Permissionless' },
       { value: 1, name: 'Permissioned' },

@@ -46,6 +46,16 @@
   font-family: 'Courier New', monospace;
 }
 
+.card-address.copyable {
+  color: #3b82f6;
+  transition: all 0.2s ease;
+}
+
+.card-address.copyable:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
 .category-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 20px;

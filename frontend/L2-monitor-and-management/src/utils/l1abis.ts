@@ -436,13 +436,47 @@ export const PROXY_ADMIN_ABI = [
 ] as const satisfies Abi;
 
 // Contract address to ABI mapping
-export const L1_CONTRACT_ABIS: Record<string, Abi> = {
-  '0x5415b132cb934066dc9bf1924a0cad9fb4eed07e': ANCHOR_STATE_REGISTRY_ABI, // AnchorStateRegistry
-  '0xc3566eb389ba4e6c378f6f0a7e99c32033aea9d4': DISPUTE_GAME_FACTORY_ABI, // DisputeGameFactory
-  '0xa99a27d6f39630332e0f39c9fa3d2e0c0d76b3e7': L1_STANDARD_BRIDGE_ABI, // L1StandardBridge
-  '0x0e9c3f12dca3494d7a6d96bf47fb1d45e949a4b2': OPTIMISM_PORTAL_ABI, // OptimismPortal
-  '0xd3d6c903d4b4a2199439f4147cc4ac4781bc5016': PROXY_ADMIN_ABI, // ProxyAdmin
-  '0x3c2b21bad19002d888b25a183bcdae97ab520b7c': SYSTEM_CONFIG_ABI, // SystemConfig
-  // EthLockbox - Address TBD (not yet deployed)
-  // When deployed, add: '[address]': ETH_LOCKBOX_ABI, // EthLockbox
+// Dynamically built from environment variables to support different OP Stack chains
+const buildL1ContractABIs = (): Record<string, Abi> => {
+  const mapping: Record<string, Abi> = {};
+
+  // Add each contract if address is configured
+  const anchorStateRegistry = process.env.REACT_APP_L1_ANCHOR_STATE_REGISTRY_ADDRESS;
+  if (anchorStateRegistry) {
+    mapping[anchorStateRegistry.toLowerCase()] = ANCHOR_STATE_REGISTRY_ABI;
+  }
+
+  const disputeGameFactory = process.env.REACT_APP_L1_DISPUTE_GAME_FACTORY_ADDRESS;
+  if (disputeGameFactory) {
+    mapping[disputeGameFactory.toLowerCase()] = DISPUTE_GAME_FACTORY_ABI;
+  }
+
+  const l1StandardBridge = process.env.REACT_APP_L1_STANDARD_BRIDGE_ADDRESS;
+  if (l1StandardBridge) {
+    mapping[l1StandardBridge.toLowerCase()] = L1_STANDARD_BRIDGE_ABI;
+  }
+
+  const optimismPortal = process.env.REACT_APP_L1_OPTIMISM_PORTAL_ADDRESS;
+  if (optimismPortal) {
+    mapping[optimismPortal.toLowerCase()] = OPTIMISM_PORTAL_ABI;
+  }
+
+  const proxyAdmin = process.env.REACT_APP_L1_PROXY_ADMIN_ADDRESS;
+  if (proxyAdmin) {
+    mapping[proxyAdmin.toLowerCase()] = PROXY_ADMIN_ABI;
+  }
+
+  const systemConfig = process.env.REACT_APP_L1_SYSTEM_CONFIG_ADDRESS;
+  if (systemConfig) {
+    mapping[systemConfig.toLowerCase()] = SYSTEM_CONFIG_ABI;
+  }
+
+  const ethLockbox = process.env.REACT_APP_L1_ETH_LOCKBOX_ADDRESS;
+  if (ethLockbox) {
+    mapping[ethLockbox.toLowerCase()] = ETH_LOCKBOX_ABI;
+  }
+
+  return mapping;
 };
+
+export const L1_CONTRACT_ABIS: Record<string, Abi> = buildL1ContractABIs();

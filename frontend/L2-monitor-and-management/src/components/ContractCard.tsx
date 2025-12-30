@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { getContractInfo, getViewFunctionData } from '../utils/contracts';
 import type { Predeploy } from '../types';
-import './PredeployCard.css';
+import './ContractCard.css';
 
-interface PredeployCardProps {
+interface ContractCardProps {
   predeploy: Predeploy;
   isSelected: boolean;
   onSelect: () => void;
@@ -14,7 +14,7 @@ interface PredeployCardProps {
   rpcUrl?: string;
 }
 
-export default function PredeployCard({
+export default function ContractCard({
   predeploy,
   isSelected,
   onSelect,
@@ -23,7 +23,7 @@ export default function PredeployCard({
   onUpgradeClick,
   connectedAddress,
   rpcUrl,
-}: PredeployCardProps) {
+}: ContractCardProps) {
   const [contractInfo, setContractInfo] = useState<{ owner: string | null; balance: bigint | null; implementation: string | null }>({
     owner: null,
     balance: null,
@@ -125,7 +125,18 @@ export default function PredeployCard({
       <div className="card-header">
         <div>
           <h3 className="card-title">{predeploy.name}</h3>
-          <p className="card-address">{truncateAddress(predeploy.address)}</p>
+          <p
+            className="card-address copyable"
+            onClick={(e) => {
+              e.stopPropagation();
+              copyToClipboard(predeploy.address, 'contractAddress');
+            }}
+            style={{ cursor: 'pointer' }}
+            title="Click to copy full address"
+          >
+            {truncateAddress(predeploy.address)}
+            {copiedField === 'contractAddress' && ' ✓'}
+          </p>
         </div>
         <span className="category-badge" style={{ backgroundColor: categoryColors[predeploy.category] }}>
           {predeploy.category}

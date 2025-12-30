@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAccount } from 'wagmi';
 import { L1_CONTRACTS } from '../config/l1contracts';
 import { getContractInfo, generateTransferOwnershipCalldata, generateChangeProxyAdminCalldata, generateUpgradeCalldata, isValidAddress, DEFAULT_L1_RPC_URL } from '../utils/contracts';
-import PredeployCard from '../components/PredeployCard';
+import ContractCard from '../components/ContractCard';
 import './L1Contracts.css';
 
 type FilterCategory = 'all' | 'bridge' | 'vault' | 'factory' | 'system' | 'governance';
@@ -206,12 +206,24 @@ export default function L1ContractsPage() {
     setSelectedContract(null);
   };
 
+  // Check for missing L1 contract addresses
+  const missingAddresses = L1_CONTRACTS.filter(c => !c.address || c.address === '');
+  const hasMissingAddresses = missingAddresses.length > 0;
+
   return (
     <div className="page-container">
       <div className="page-header">
         <h1>L1 Contracts Management</h1>
         <p>Query and manage L1 contracts</p>
       </div>
+
+      {hasMissingAddresses && (
+        <div className="warning-banner" style={{ backgroundColor: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}>
+          ⚠️ Some L1 contract addresses are not configured ({missingAddresses.length}/{L1_CONTRACTS.length}).
+          Please set the corresponding environment variables in .env file to enable full functionality.
+          Missing: {missingAddresses.map(c => c.name).join(', ')}
+        </div>
+      )}
 
       {!isConnected && (
         <div className="warning-banner">
@@ -251,7 +263,7 @@ export default function L1ContractsPage() {
 
       <div className="predeploys-grid">
         {filtered.map(predeploy => (
-          <PredeployCard
+          <ContractCard
             key={predeploy.address}
             predeploy={predeploy}
             isSelected={selectedContract === predeploy.address}

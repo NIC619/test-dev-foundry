@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAccount } from 'wagmi';
 import { PREDEPLOYS } from '../config/predeploys';
 import { getContractInfo, generateTransferOwnershipCalldata, generateChangeProxyAdminCalldata, generateUpgradeCalldata, isValidAddress } from '../utils/contracts';
-import PredeployCard from '../components/PredeployCard';
+import ContractCard from '../components/ContractCard';
 import './Predeploys.css';
 
 type FilterCategory = 'all' | 'bridge' | 'vault' | 'factory' | 'system' | 'governance';
@@ -251,7 +251,7 @@ export default function PredeploysPage() {
 
       <div className="predeploys-grid">
         {filtered.map(predeploy => (
-          <PredeployCard
+          <ContractCard
             key={predeploy.address}
             predeploy={predeploy}
             isSelected={selectedPredeploy === predeploy.address}

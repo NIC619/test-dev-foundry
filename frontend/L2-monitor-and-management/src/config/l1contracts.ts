@@ -2,11 +2,11 @@ import type { Predeploy } from '../types';
 
 // L1 contracts configuration
 // Note: Using Predeploy type for compatibility with existing components
+// Addresses are read from environment variables to support different OP Stack chains
 export const L1_CONTRACTS: Predeploy[] = [
-  // Placeholder contracts - will be populated with actual details
   {
     name: 'AnchorStateRegistry',
-    address: '0x5415b132cb934066dc9bf1924a0cad9fb4eed07e',
+    address: process.env.REACT_APP_L1_ANCHOR_STATE_REGISTRY_ADDRESS || '',
     description: 'Anchor state registry for L2 state commitments',
     category: 'system',
     isManageable: true,
@@ -24,7 +24,7 @@ export const L1_CONTRACTS: Predeploy[] = [
   },
   {
     name: 'DisputeGameFactory',
-    address: '0xC3566eB389bA4e6c378f6f0a7e99C32033AeA9D4',
+    address: process.env.REACT_APP_L1_DISPUTE_GAME_FACTORY_ADDRESS || '',
     description: 'Factory for creating dispute games',
     category: 'system',
     isManageable: true,
@@ -46,7 +46,7 @@ export const L1_CONTRACTS: Predeploy[] = [
   },
   {
     name: 'EthLockbox',
-    address: '0x0000000000000000000000000000000000000000', // TODO: Add actual address when deployed
+    address: process.env.REACT_APP_L1_ETH_LOCKBOX_ADDRESS || '',
     description: 'ETH lockbox for bridging',
     category: 'bridge',
     isManageable: true,
@@ -58,7 +58,7 @@ export const L1_CONTRACTS: Predeploy[] = [
   },
   {
     name: 'L1StandardBridge',
-    address: '0xa99A27d6F39630332e0F39C9Fa3D2E0C0d76B3e7',
+    address: process.env.REACT_APP_L1_STANDARD_BRIDGE_ADDRESS || '',
     description: 'L1 standard bridge for cross-chain transfers',
     category: 'bridge',
     isManageable: true,
@@ -71,7 +71,7 @@ export const L1_CONTRACTS: Predeploy[] = [
   },
   {
     name: 'OptimismPortal',
-    address: '0x0E9c3F12dcA3494D7A6d96bF47FB1d45E949A4B2',
+    address: process.env.REACT_APP_L1_OPTIMISM_PORTAL_ADDRESS || '',
     description: 'Portal for L1 <> L2 communication',
     category: 'bridge',
     isManageable: true,
@@ -87,14 +87,14 @@ export const L1_CONTRACTS: Predeploy[] = [
   },
   {
     name: 'ProxyAdmin',
-    address: '0xd3D6C903D4B4a2199439F4147CC4Ac4781bC5016',
+    address: process.env.REACT_APP_L1_PROXY_ADMIN_ADDRESS || '',
     description: 'Owner of L1 contract proxies',
     category: 'system',
     isManageable: true,
   },
   {
     name: 'SystemConfig',
-    address: '0x3c2b21BAD19002D888B25a183BcDae97ab520B7c',
+    address: process.env.REACT_APP_L1_SYSTEM_CONFIG_ADDRESS || '',
     description: 'System configuration contract',
     category: 'system',
     isManageable: true,
