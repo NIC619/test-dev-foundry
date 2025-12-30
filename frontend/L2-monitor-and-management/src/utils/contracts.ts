@@ -1,10 +1,15 @@
 import { createPublicClient, http, type Abi } from 'viem';
+import { L1_CONTRACT_ABIS, L1_STANDARD_BRIDGE_ABI } from './l1abis';
 
-// RPC URL from environment variable
-if (!process.env.REACT_APP_RPC_URL) {
-  throw new Error('REACT_APP_RPC_URL is not set. Please create a .env file with REACT_APP_RPC_URL configured.');
+// RPC URLs from environment variables
+if (!process.env.REACT_APP_L1_RPC_URL) {
+  throw new Error('REACT_APP_L1_RPC_URL is not set. Please create a .env file with REACT_APP_L1_RPC_URL configured.');
 }
-const DEFAULT_RPC_URL = process.env.REACT_APP_RPC_URL;
+if (!process.env.REACT_APP_L2_RPC_URL) {
+  throw new Error('REACT_APP_L2_RPC_URL is not set. Please create a .env file with REACT_APP_L2_RPC_URL configured.');
+}
+export const DEFAULT_L1_RPC_URL = process.env.REACT_APP_L1_RPC_URL;
+export const DEFAULT_L2_RPC_URL = process.env.REACT_APP_L2_RPC_URL;
 
 // ABI for Proxy contracts (to get admin)
 export const PROXY_ABI = [
@@ -327,14 +332,33 @@ export interface ContractInfo {
 
 export async function getContractOwner(
   address: string,
-  rpcUrl: string = DEFAULT_RPC_URL,
+  rpcUrl: string = DEFAULT_L2_RPC_URL,
 ): Promise<string | null> {
   const client = createPublicClient({
     transport: http(rpcUrl),
   });
 
+  const lowerAddress = address.toLowerCase();
+
+  // L1ChugSplashProxy contracts (like L1StandardBridge) use getOwner() with from: address(0)
+  const isL1ChugSplashProxy = lowerAddress === '0xa99a27d6f39630332e0f39c9fa3d2e0c0d76b3e7'; // L1StandardBridge
+
+  if (isL1ChugSplashProxy) {
+    try {
+      const owner = await client.readContract({
+        address: address as `0x${string}`,
+        abi: L1_STANDARD_BRIDGE_ABI,
+        functionName: 'getOwner',
+        account: '0x0000000000000000000000000000000000000000',
+      });
+      return owner as string;
+    } catch {
+      return null;
+    }
+  }
+
   // ProxyAdmin contract uses owner() not admin()
-  const isProxyAdmin = address.toLowerCase() === '0x4200000000000000000000000000000000000018';
+  const isProxyAdmin = lowerAddress === '0x4200000000000000000000000000000000000018';
 
   if (isProxyAdmin) {
     try {
@@ -374,11 +398,30 @@ export async function getContractOwner(
 
 export async function getImplementation(
   address: string,
-  rpcUrl: string = DEFAULT_RPC_URL,
+  rpcUrl: string = DEFAULT_L2_RPC_URL,
 ): Promise<string | null> {
   const client = createPublicClient({
     transport: http(rpcUrl),
   });
+
+  const lowerAddress = address.toLowerCase();
+
+  // L1ChugSplashProxy contracts (like L1StandardBridge) use getImplementation() with from: address(0)
+  const isL1ChugSplashProxy = lowerAddress === '0xa99a27d6f39630332e0f39c9fa3d2e0c0d76b3e7'; // L1StandardBridge
+
+  if (isL1ChugSplashProxy) {
+    try {
+      const implementation = await client.readContract({
+        address: address as `0x${string}`,
+        abi: L1_STANDARD_BRIDGE_ABI,
+        functionName: 'getImplementation',
+        account: '0x0000000000000000000000000000000000000000',
+      });
+      return implementation as string;
+    } catch {
+      return null;
+    }
+  }
 
   try {
     const implementation = await client.readContract({
@@ -394,7 +437,7 @@ export async function getImplementation(
 
 export async function getBalance(
   address: string,
-  rpcUrl: string = DEFAULT_RPC_URL,
+  rpcUrl: string = DEFAULT_L2_RPC_URL,
 ): Promise<bigint | null> {
   const client = createPublicClient({
     transport: http(rpcUrl),
@@ -488,6 +531,11 @@ export function isEOA(address: string): boolean {
 function getAbiForContract(address: string): Abi | null {
   const lowerAddress = address.toLowerCase();
 
+  // Check L1 contracts first
+  if (L1_CONTRACT_ABIS[lowerAddress]) {
+    return L1_CONTRACT_ABIS[lowerAddress];
+  }
+
   // L2CrossDomainMessenger
   if (lowerAddress === '0x4200000000000000000000000000000000000007') {
     return L2_CROSS_DOMAIN_MESSENGER_ABI;
@@ -530,7 +578,7 @@ function getAbiForContract(address: string): Abi | null {
 export async function getViewFunctionData(
   address: string,
   functionNames: string[],
-  rpcUrl: string = DEFAULT_RPC_URL,
+  rpcUrl: string = DEFAULT_L2_RPC_URL,
 ): Promise<Record<string, any>> {
   const client = createPublicClient({
     transport: http(rpcUrl),
@@ -543,7 +591,45 @@ export async function getViewFunctionData(
 
   const results: Record<string, any> = {};
 
+  // Check if we need to query resourceConfig
+  const needsResourceConfig = functionNames.some(fn => fn.startsWith('resourceConfig_'));
+  if (needsResourceConfig) {
+    try {
+      const result = await client.readContract({
+        address: address as `0x${string}`,
+        abi,
+        functionName: 'resourceConfig',
+      });
+
+      // Expand resourceConfig into individual components
+      if (typeof result === 'object' && result !== null) {
+        const config = result as any;
+        if ('maxResourceLimit' in config) {
+          results['resourceConfig_maxResourceLimit'] = config.maxResourceLimit;
+          results['resourceConfig_elasticityMultiplier'] = config.elasticityMultiplier;
+          results['resourceConfig_baseFeeMaxChangeDenominator'] = config.baseFeeMaxChangeDenominator;
+          results['resourceConfig_minimumBaseFee'] = config.minimumBaseFee;
+          results['resourceConfig_systemTxMaxGas'] = config.systemTxMaxGas;
+          results['resourceConfig_maximumBaseFee'] = config.maximumBaseFee;
+        }
+      }
+    } catch (error) {
+      // If resourceConfig query fails, set all components to null
+      results['resourceConfig_maxResourceLimit'] = null;
+      results['resourceConfig_elasticityMultiplier'] = null;
+      results['resourceConfig_baseFeeMaxChangeDenominator'] = null;
+      results['resourceConfig_minimumBaseFee'] = null;
+      results['resourceConfig_systemTxMaxGas'] = null;
+      results['resourceConfig_maximumBaseFee'] = null;
+    }
+  }
+
   for (const functionName of functionNames) {
+    // Skip resourceConfig component names since we handle them above
+    if (functionName.startsWith('resourceConfig_')) {
+      continue;
+    }
+
     try {
       const result = await client.readContract({
         address: address as `0x${string}`,
@@ -553,6 +639,49 @@ export async function getViewFunctionData(
       results[functionName] = result;
     } catch (error) {
       results[functionName] = null;
+    }
+  }
+
+  // Special handling for DisputeGameFactory mappings
+  if (address.toLowerCase() === '0xc3566eb389ba4e6c378f6f0a7e99c32033aea9d4') {
+    const gameTypes = [
+      { value: 0, name: 'Permissionless' },
+      { value: 1, name: 'Permissioned' },
+      { value: 6, name: 'OP_SUCCINCT' },
+    ];
+
+    for (const gameType of gameTypes) {
+      // Query gameImpls mapping
+      try {
+        const implResult = await client.readContract({
+          address: address as `0x${string}`,
+          abi,
+          functionName: 'gameImpls',
+          args: [gameType.value],
+        });
+        // Only add if non-zero address
+        if (implResult && implResult !== '0x0000000000000000000000000000000000000000') {
+          results[`gameImpls_${gameType.name}`] = implResult;
+        }
+      } catch (error) {
+        // Ignore errors
+      }
+
+      // Query initBonds mapping
+      try {
+        const bondResult = await client.readContract({
+          address: address as `0x${string}`,
+          abi,
+          functionName: 'initBonds',
+          args: [gameType.value],
+        });
+        // Only add if non-zero
+        if (bondResult && bondResult !== 0n) {
+          results[`initBonds_${gameType.name}`] = bondResult;
+        }
+      } catch (error) {
+        // Ignore errors
+      }
     }
   }
 

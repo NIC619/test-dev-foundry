@@ -11,6 +11,7 @@ interface PredeployCardProps {
   onWithdrawClick: () => void;
   onUpgradeClick: () => void;
   connectedAddress?: string;
+  rpcUrl?: string;
 }
 
 export default function PredeployCard({
@@ -21,6 +22,7 @@ export default function PredeployCard({
   onWithdrawClick,
   onUpgradeClick,
   connectedAddress,
+  rpcUrl,
 }: PredeployCardProps) {
   const [contractInfo, setContractInfo] = useState<{ owner: string | null; balance: bigint | null; implementation: string | null }>({
     owner: null,
@@ -39,7 +41,7 @@ export default function PredeployCard({
 
         // Fetch owner and balance if not purely view-function based
         if (!predeploy.viewFunctions || predeploy.isManageable) {
-          const info = await getContractInfo(predeploy.address);
+          const info = await getContractInfo(predeploy.address, rpcUrl);
           setContractInfo({
             owner: info.owner,
             balance: info.balance,
@@ -51,18 +53,19 @@ export default function PredeployCard({
         // If contract has view functions, fetch those as well
         if (predeploy.viewFunctions && predeploy.viewFunctions.length > 0) {
           const functionNames = predeploy.viewFunctions.map(vf => vf.name);
-          const data = await getViewFunctionData(predeploy.address, functionNames);
+          const data = await getViewFunctionData(predeploy.address, functionNames, rpcUrl);
           setViewData(data);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch contract info');
+        const errorMsg = err instanceof Error ? err.message : 'Failed to fetch contract info';
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
     };
 
     fetchInfo();
-  }, [predeploy.address, predeploy.viewFunctions, predeploy.isManageable]);
+  }, [predeploy.address, predeploy.viewFunctions, predeploy.isManageable, rpcUrl]);
 
   const isOwnedByConnected =
     connectedAddress && contractInfo.owner
@@ -79,13 +82,26 @@ export default function PredeployCard({
     }
   };
 
-  const isCopyableValue = (functionName?: string): boolean => {
+  const isCopyableValue = (functionName?: string, value?: any): boolean => {
     if (!functionName) return false;
-    // Copyable: addresses, hashes, and other hex values
+
+    // Check if value is a valid address or hash
+    if (typeof value === 'string' && value.startsWith('0x')) {
+      // 42 chars = address, 66 chars = bytes32
+      if (value.length === 42 || value.length === 66) {
+        return true;
+      }
+    }
+
+    // Copyable: addresses, hashes, and other hex values by function name
     return functionName === 'hash' ||
            functionName === 'batcherHash' ||
            functionName.toLowerCase().includes('address') ||
            functionName.toLowerCase().includes('account') ||
+           functionName.toLowerCase().includes('config') ||
+           functionName.toLowerCase().includes('factory') ||
+           functionName.toLowerCase().includes('game') ||
+           functionName.toLowerCase().includes('registry') ||
            functionName === 'recipient' ||
            functionName === 'otherMessenger' ||
            functionName === 'otherBridge' ||
@@ -176,7 +192,7 @@ export default function PredeployCard({
         {predeploy.viewFunctions && predeploy.viewFunctions.length > 0 && (
           predeploy.viewFunctions.map(vf => {
             const rawValue = viewData[vf.name];
-            const isCopyable = isCopyableValue(vf.name);
+            const isCopyable = isCopyableValue(vf.name, rawValue);
             const displayValue = rawValue !== undefined && rawValue !== null
               ? formatViewData(rawValue, vf.name)
               : '—';
@@ -206,6 +222,12 @@ export default function PredeployCard({
 
       {isOwnedByConnected && (
         <div className="owned-indicator">✓ You own this contract</div>
+      )}
+
+      {error && (
+        <div className="error-message" style={{ color: '#ef4444', padding: '8px', fontSize: '12px' }}>
+          Error: {error}
+        </div>
       )}
 
       {predeploy.isManageable && (
@@ -258,14 +280,34 @@ function formatBalance(balance: bigint): string {
 }
 
 function formatViewData(value: any, functionName?: string): string {
+  // Special handling for getAnchorRoot (returns tuple: [root: bytes32, l2SequenceNumber: uint256])
+  if (functionName === 'getAnchorRoot' && Array.isArray(value) && value.length === 2) {
+    const root = value[0];
+    const l2SequenceNumber = value[1];
+    const rootStr = typeof root === 'string' ? truncateHash(root) : String(root);
+    const seqNumStr = typeof l2SequenceNumber === 'bigint' ? l2SequenceNumber.toString() : String(l2SequenceNumber);
+    return `Root: ${rootStr}, L2 Seq: ${seqNumStr}`;
+  }
+
+  // Special handling for respectedGameType
+  if (functionName === 'respectedGameType') {
+    const gameType = typeof value === 'bigint' ? Number(value) : value;
+    switch (gameType) {
+      case 0: return 'Permissionless (0)';
+      case 1: return 'Permissioned (1)';
+      case 6: return 'OP_SUCCINCT (6)';
+      default: return `Unknown (${gameType})`;
+    }
+  }
+
   // Special handling for withdrawalNetwork and withdrawalNetworkL2Owner
   if (functionName === 'withdrawalNetwork' || functionName === 'withdrawalNetworkL2Owner') {
     const networkValue = typeof value === 'bigint' ? Number(value) : value;
     return networkValue === 0 ? 'L1' : 'L2';
   }
 
-  // Special handling for ETH amounts (minWithdrawalAmount, totalProcessed, totalSupply)
-  if (functionName === 'minWithdrawalAmount' || functionName === 'totalProcessed' || functionName === 'totalSupply') {
+  // Special handling for ETH amounts (minWithdrawalAmount, totalProcessed, totalSupply, initBonds)
+  if (functionName === 'minWithdrawalAmount' || functionName === 'totalProcessed' || functionName === 'totalSupply' || functionName?.startsWith('initBonds_')) {
     if (typeof value === 'bigint') {
       return formatBalance(value);
     }
@@ -276,6 +318,16 @@ function formatViewData(value: any, functionName?: string): string {
     if (typeof value === 'string') {
       return truncateHash(value);
     }
+  }
+
+  // Special handling for timestamps
+  if (functionName === 'retirementTimestamp' && (typeof value === 'bigint' || typeof value === 'number')) {
+    const timestamp = typeof value === 'bigint' ? Number(value) : value;
+    if (timestamp === 0) {
+      return '0 (Not retired)';
+    }
+    const date = new Date(timestamp * 1000);
+    return `${timestamp} (${date.toUTCString()})`;
   }
 
   // Handle string values

@@ -1,6 +1,6 @@
-# L2 Monitor & Management Frontend
+# UniFi Monitor & Management Frontend
 
-A comprehensive admin dashboard for monitoring and managing OP Stack chain predeploy contracts and block information.
+A comprehensive admin dashboard for monitoring and managing L1 and L2 contracts, as well as block information for the UniFi OP Stack chain.
 
 ## Features
 
@@ -50,8 +50,11 @@ npm install
 1. **Environment Variables**: Create a `.env` file in the project root (use `.env.example` as a template):
 
 ```bash
-# Main RPC URL for contract interactions
-REACT_APP_RPC_URL=http://your-main-rpc-url
+# L1 RPC URL for L1 contract interactions
+REACT_APP_L1_RPC_URL=https://your-l1-rpc-url
+
+# L2 RPC URL for L2 contract interactions
+REACT_APP_L2_RPC_URL=http://your-l2-rpc-url
 
 # Block Monitor RPC Endpoints
 REACT_APP_GATEWAY_RPC_URL=https://your-gateway-rpc-url
