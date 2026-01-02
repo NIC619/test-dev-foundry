@@ -147,4 +147,14 @@ export const PREDEPLOYS: Predeploy[] = [
     category: 'system',
     isManageable: true,
   },
+  {
+    name: 'SignalService',
+    address: process.env.REACT_APP_L2_SIGNAL_SERVICE_ADDRESS || '',
+    description: 'Signal service for cross-chain communication',
+    category: 'system',
+    isManageable: false,
+    viewFunctions: [
+      { name: 'L1_SIGNAL_SERVICE', label: 'L1 Signal Service' },
+    ],
+  },
 ];

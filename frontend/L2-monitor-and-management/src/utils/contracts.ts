@@ -74,6 +74,17 @@ export const PROXY_ADMIN_ABI = [
   },
 ] as const satisfies Abi;
 
+// ABI for SignalService contract (L2)
+export const SIGNAL_SERVICE_ABI = [
+  {
+    type: 'function',
+    name: 'L1_SIGNAL_SERVICE',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+] as const satisfies Abi;
+
 // Simple ABI for owner-based contracts
 export const OWNABLE_ABI = [
   {
@@ -571,6 +582,12 @@ function getAbiForContract(address: string): Abi | null {
   // L1Block
   if (lowerAddress === '0x4200000000000000000000000000000000000015') {
     return L1_BLOCK_ABI;
+  }
+
+  // SignalService (L2)
+  const l2SignalServiceAddress = process.env.REACT_APP_L2_SIGNAL_SERVICE_ADDRESS?.toLowerCase();
+  if (l2SignalServiceAddress && lowerAddress === l2SignalServiceAddress) {
+    return SIGNAL_SERVICE_ABI;
   }
 
   return null;

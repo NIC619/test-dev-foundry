@@ -126,4 +126,12 @@ export const L1_CONTRACTS: Predeploy[] = [
       { name: 'resourceConfig_maximumBaseFee', label: 'Resource Config - Maximum Base Fee' },
     ],
   },
+  {
+    name: 'SignalService',
+    address: process.env.REACT_APP_L1_SIGNAL_SERVICE_ADDRESS || '',
+    description: 'L1 Signal service for cross-chain communication',
+    category: 'system',
+    isManageable: false,
+    viewFunctions: [], // Not a proxy contract - no admin/implementation to display
+  },
 ];
