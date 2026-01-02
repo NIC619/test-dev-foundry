@@ -5,7 +5,7 @@ import { getContractInfo, generateTransferOwnershipCalldata, generateChangeProxy
 import ContractCard from '../components/ContractCard';
 import './L1Contracts.css';
 
-type FilterCategory = 'all' | 'bridge' | 'vault' | 'factory' | 'system' | 'governance';
+type FilterCategory = 'all' | 'bridge' | 'vault' | 'factory' | 'system' | 'governance' | 'tee';
 
 export default function L1ContractsPage() {
   const { address: connectedAddress, isConnected } = useAccount();
@@ -245,6 +245,7 @@ export default function L1ContractsPage() {
             <option value="factory">Factories (omitted)</option>
             <option value="system">System</option>
             <option value="governance">Governance & Attestation (omitted)</option>
+            <option value="tee">TEE</option>
           </select>
         </div>
 
@@ -292,7 +293,7 @@ export default function L1ContractsPage() {
             <div className="modal-header">
               <h2>
                 {actionType === 'transfer'
-                  ? (L1_CONTRACTS.find(p => p.address === selectedContract)?.name === 'ProxyAdmin' ? 'Transfer Owner' : 'Transfer Admin')
+                  ? ((L1_CONTRACTS.find(p => p.address === selectedContract)?.name === 'ProxyAdmin' || L1_CONTRACTS.find(p => p.address === selectedContract)?.name === 'ProverRegistry' || L1_CONTRACTS.find(p => p.address === selectedContract)?.name === 'WorkloadVerifier') ? 'Transfer Owner' : 'Transfer Admin')
                   : actionType === 'upgrade' ? 'Upgrade Implementation' : 'Withdraw Funds'}
               </h2>
               <button className="close-btn" onClick={resetForm}>
@@ -305,7 +306,7 @@ export default function L1ContractsPage() {
                 <>
                   <div className="form-group">
                     <label htmlFor="new-owner">
-                      {L1_CONTRACTS.find(p => p.address === selectedContract)?.name === 'ProxyAdmin' ? 'New Owner Address' : 'New Admin Address'}
+                      {(L1_CONTRACTS.find(p => p.address === selectedContract)?.name === 'ProxyAdmin' || L1_CONTRACTS.find(p => p.address === selectedContract)?.name === 'ProverRegistry' || L1_CONTRACTS.find(p => p.address === selectedContract)?.name === 'WorkloadVerifier') ? 'New Owner Address' : 'New Admin Address'}
                     </label>
                     <input
                       id="new-owner"

@@ -404,6 +404,134 @@ export const ETH_LOCKBOX_ABI = [
   },
 ] as const satisfies Abi;
 
+// ABI for ProverRegistry contract
+export const PROVER_REGISTRY_ABI = [
+  {
+    type: 'function',
+    name: 'version',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'string' }],
+  },
+  {
+    type: 'function',
+    name: 'chainID',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'verifier',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'requiredProverTypes',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'bytes' }],
+  },
+  {
+    type: 'function',
+    name: 'attestValiditySeconds',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'maxBlockNumberDiff',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'nextInstanceId',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'owner',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'attestedProvers',
+    stateMutability: 'view',
+    inputs: [{ name: 'instanceId', type: 'uint256' }],
+    outputs: [
+      {
+        type: 'tuple',
+        components: [
+          { name: 'addr', type: 'address' },
+          { name: 'validUntil', type: 'uint64' },
+          {
+            name: 'ty',
+            type: 'tuple',
+            components: [
+              { name: 'teeType', type: 'uint8' },
+              { name: 'elType', type: 'uint8' },
+            ],
+          },
+          { name: 'goldenMeasurementHash', type: 'bytes32' },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'goldenMeasurementRegistry',
+    stateMutability: 'view',
+    inputs: [{ type: 'bytes32' }],
+    outputs: [
+      { type: 'uint8' },
+      { type: 'uint8' },
+      { type: 'uint8' },
+      { type: 'string' },
+    ],
+  },
+] as const satisfies Abi;
+
+// ABI for WorkloadVerifier contract
+export const WORKLOAD_VERIFIER_ABI = [
+  {
+    type: 'function',
+    name: 'dcapAttestation',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'snpAttestation',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'tpmAttestation',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'owner',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+] as const satisfies Abi;
+
 // ABI for ProxyAdmin contract
 export const PROXY_ADMIN_ABI = [
   {
@@ -474,6 +602,16 @@ const buildL1ContractABIs = (): Record<string, Abi> => {
   const ethLockbox = process.env.REACT_APP_L1_ETH_LOCKBOX_ADDRESS;
   if (ethLockbox) {
     mapping[ethLockbox.toLowerCase()] = ETH_LOCKBOX_ABI;
+  }
+
+  const proverRegistry = process.env.REACT_APP_L1_PROVER_REGISTRY_ADDRESS;
+  if (proverRegistry) {
+    mapping[proverRegistry.toLowerCase()] = PROVER_REGISTRY_ABI;
+  }
+
+  const workloadVerifier = process.env.REACT_APP_L1_WORKLOAD_VERIFIER_ADDRESS;
+  if (workloadVerifier) {
+    mapping[workloadVerifier.toLowerCase()] = WORKLOAD_VERIFIER_ABI;
   }
 
   return mapping;

@@ -134,4 +134,32 @@ export const L1_CONTRACTS: Predeploy[] = [
     isManageable: false,
     viewFunctions: [], // Not a proxy contract - no admin/implementation to display
   },
+  {
+    name: 'ProverRegistry',
+    address: process.env.REACT_APP_L1_PROVER_REGISTRY_ADDRESS || '',
+    description: 'Registry for TEE provers and attestation verification',
+    category: 'tee',
+    isManageable: true,
+    viewFunctions: [
+      { name: 'version', label: 'Version' },
+      { name: 'chainID', label: 'Chain ID' },
+      { name: 'verifier', label: 'Verifier' },
+      { name: 'requiredProverTypes', label: 'Required Prover Types' },
+      { name: 'attestValiditySeconds', label: 'Attest Validity (seconds)' },
+      { name: 'maxBlockNumberDiff', label: 'Max Block Number Diff' },
+      { name: 'nextInstanceId', label: 'Next Instance ID' },
+    ],
+  },
+  {
+    name: 'WorkloadVerifier',
+    address: process.env.REACT_APP_L1_WORKLOAD_VERIFIER_ADDRESS || '',
+    description: 'Workload verifier for TEE attestations',
+    category: 'tee',
+    isManageable: true,
+    viewFunctions: [
+      { name: 'dcapAttestation', label: 'DCAP Attestation' },
+      { name: 'snpAttestation', label: 'SNP Attestation' },
+      { name: 'tpmAttestation', label: 'TPM Attestation' },
+    ],
+  },
 ];

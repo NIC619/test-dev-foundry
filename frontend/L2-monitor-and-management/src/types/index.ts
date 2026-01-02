@@ -27,7 +27,7 @@ export interface Predeploy {
   name: string;
   address: string;
   description: string;
-  category: 'bridge' | 'vault' | 'factory' | 'system' | 'governance';
+  category: 'bridge' | 'vault' | 'factory' | 'system' | 'governance' | 'tee';
   isManageable: boolean;
   viewFunctions?: ViewFunction[]; // For contracts without owner
 }

@@ -5,7 +5,7 @@ import { getContractInfo, generateTransferOwnershipCalldata, generateChangeProxy
 import ContractCard from '../components/ContractCard';
 import './Predeploys.css';
 
-type FilterCategory = 'all' | 'bridge' | 'vault' | 'factory' | 'system' | 'governance';
+type FilterCategory = 'all' | 'bridge' | 'vault' | 'factory' | 'system' | 'governance' | 'tee';
 
 export default function PredeploysPage() {
   const { address: connectedAddress, isConnected } = useAccount();
@@ -233,6 +233,7 @@ export default function PredeploysPage() {
             <option value="factory">Factories (omitted)</option>
             <option value="system">System</option>
             <option value="governance">Governance & Attestation (omitted)</option>
+            <option value="tee">TEE</option>
           </select>
         </div>
 
@@ -279,7 +280,7 @@ export default function PredeploysPage() {
             <div className="modal-header">
               <h2>
                 {actionType === 'transfer'
-                  ? (PREDEPLOYS.find(p => p.address === selectedPredeploy)?.name === 'ProxyAdmin' ? 'Transfer Owner' : 'Transfer Admin')
+                  ? ((PREDEPLOYS.find(p => p.address === selectedPredeploy)?.name === 'ProxyAdmin' || PREDEPLOYS.find(p => p.address === selectedPredeploy)?.name === 'ProverRegistry' || PREDEPLOYS.find(p => p.address === selectedPredeploy)?.name === 'WorkloadVerifier') ? 'Transfer Owner' : 'Transfer Admin')
                   : actionType === 'upgrade' ? 'Upgrade Implementation' : 'Withdraw Funds'}
               </h2>
               <button className="close-btn" onClick={resetForm}>
@@ -292,7 +293,7 @@ export default function PredeploysPage() {
                 <>
                   <div className="form-group">
                     <label htmlFor="new-owner">
-                      {PREDEPLOYS.find(p => p.address === selectedPredeploy)?.name === 'ProxyAdmin' ? 'New Owner Address' : 'New Admin Address'}
+                      {(PREDEPLOYS.find(p => p.address === selectedPredeploy)?.name === 'ProxyAdmin' || PREDEPLOYS.find(p => p.address === selectedPredeploy)?.name === 'ProverRegistry' || PREDEPLOYS.find(p => p.address === selectedPredeploy)?.name === 'WorkloadVerifier') ? 'New Owner Address' : 'New Admin Address'}
                     </label>
                     <input
                       id="new-owner"

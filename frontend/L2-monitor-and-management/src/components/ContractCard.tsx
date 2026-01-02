@@ -93,6 +93,18 @@ export default function ContractCard({
       }
     }
 
+    // Special handling for attestedProvers fields
+    if (functionName.startsWith('attestedProvers_')) {
+      const parts = functionName.split('_');
+      const fieldName = parts[2];
+      if (fieldName === 'addr') return true;
+      if (fieldName === 'goldenMeasurement') {
+        const subField = parts[3];
+        return subField === 'hash';
+      }
+      return false;
+    }
+
     // Copyable: addresses, hashes, and other hex values by function name
     return functionName === 'hash' ||
            functionName === 'batcherHash' ||
@@ -115,6 +127,7 @@ export default function ContractCard({
     factory: '#8b5cf6',
     system: '#10b981',
     governance: '#ef4444',
+    tee: '#06b6d4',
   };
 
   return (
@@ -150,7 +163,7 @@ export default function ContractCard({
         {(!predeploy.viewFunctions || predeploy.isManageable) && (
           <>
             <div className="info-row">
-              <span className="info-label">{predeploy.name === 'ProxyAdmin' ? 'Owner:' : 'Proxy Admin:'}</span>
+              <span className="info-label">{(predeploy.name === 'ProxyAdmin' || predeploy.name === 'ProverRegistry' || predeploy.name === 'WorkloadVerifier') ? 'Owner:' : 'Proxy Admin:'}</span>
               <span
                 className="info-value copyable"
                 onClick={(e) => {
@@ -167,8 +180,8 @@ export default function ContractCard({
               </span>
             </div>
 
-            {/* Display implementation address for proxy contracts (except ProxyAdmin) */}
-            {predeploy.name !== 'ProxyAdmin' && (
+            {/* Display implementation address for proxy contracts (except ProxyAdmin, ProverRegistry, and WorkloadVerifier) */}
+            {predeploy.name !== 'ProxyAdmin' && predeploy.name !== 'ProverRegistry' && predeploy.name !== 'WorkloadVerifier' && (
               <div className="info-row">
                 <span className="info-label">Implementation:</span>
                 <span
@@ -229,6 +242,57 @@ export default function ContractCard({
             );
           })
         )}
+
+        {/* Display dynamically queried attestedProvers mapping results */}
+        {Object.keys(viewData)
+          .filter(key => key.startsWith('attestedProvers_'))
+          .sort()
+          .map(key => {
+            const rawValue = viewData[key];
+            const parts = key.split('_');
+            const instanceId = parts[1];
+            const fieldName = parts[2];
+
+            const isCopyable = isCopyableValue(key, rawValue);
+            const displayValue = rawValue !== undefined && rawValue !== null
+              ? formatViewData(rawValue, key)
+              : '—';
+
+            // Create label based on field name
+            let label = '';
+            if (fieldName === 'addr') label = `Attested Prover ${instanceId} - Address`;
+            else if (fieldName === 'validUntil') label = `Attested Prover ${instanceId} - Valid Until`;
+            else if (fieldName === 'teeType') label = `Attested Prover ${instanceId} - TEE Type`;
+            else if (fieldName === 'elType') label = `Attested Prover ${instanceId} - EL Type`;
+            else if (fieldName === 'goldenMeasurement') {
+              const subField = parts[3];
+              if (subField === 'cloudType') label = `Attested Prover ${instanceId} - Golden Measurement Cloud Type`;
+              else if (subField === 'teeType') label = `Attested Prover ${instanceId} - Golden Measurement TEE Type`;
+              else if (subField === 'elType') label = `Attested Prover ${instanceId} - Golden Measurement EL Type`;
+              else if (subField === 'tag') label = `Attested Prover ${instanceId} - Golden Measurement Tag`;
+              else if (subField === 'hash') label = `Attested Prover ${instanceId} - Golden Measurement Hash`;
+            }
+
+            return (
+              <div className="info-row" key={key}>
+                <span className="info-label">{label}:</span>
+                <span
+                  className={isCopyable ? 'info-value copyable' : 'info-value'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isCopyable && rawValue) {
+                      copyToClipboard(String(rawValue), key);
+                    }
+                  }}
+                  style={{ cursor: isCopyable && rawValue ? 'pointer' : 'default' }}
+                  title={isCopyable && rawValue ? 'Click to copy' : undefined}
+                >
+                  {loading ? 'Loading...' : displayValue}
+                  {copiedField === key && ' ✓'}
+                </span>
+              </div>
+            );
+          })}
       </div>
 
       {isOwnedByConnected && (
@@ -250,9 +314,9 @@ export default function ContractCard({
               onTransferClick();
             }}
           >
-            {predeploy.name === 'ProxyAdmin' ? 'Transfer Owner' : 'Transfer Admin'}
+            {(predeploy.name === 'ProxyAdmin' || predeploy.name === 'ProverRegistry' || predeploy.name === 'WorkloadVerifier') ? 'Transfer Owner' : 'Transfer Admin'}
           </button>
-          {predeploy.name !== 'ProxyAdmin' && (
+          {predeploy.name !== 'ProxyAdmin' && predeploy.name !== 'ProverRegistry' && predeploy.name !== 'WorkloadVerifier' && (
             <button
               className="btn btn-small btn-upgrade"
               onClick={e => {
@@ -291,6 +355,97 @@ function formatBalance(balance: bigint): string {
 }
 
 function formatViewData(value: any, functionName?: string): string {
+  // Special handling for attestedProvers individual fields
+  if (functionName?.startsWith('attestedProvers_')) {
+    const parts = functionName.split('_');
+    const fieldName = parts[2];
+
+    // Address field
+    if (fieldName === 'addr' && typeof value === 'string') {
+      return truncateAddress(value);
+    }
+
+    // ValidUntil field (timestamp)
+    if (fieldName === 'validUntil' && (typeof value === 'bigint' || typeof value === 'number')) {
+      const timestamp = typeof value === 'bigint' ? Number(value) : value;
+      if (timestamp === 0) {
+        return '0 (Not set)';
+      }
+      const date = new Date(timestamp * 1000);
+      return `${timestamp} (${date.toUTCString()})`;
+    }
+
+    // TEEType enum: 0=Unknown, 1=IntelTDX, 2=AmdSevSnp
+    if (fieldName === 'teeType') {
+      const teeType = typeof value === 'bigint' ? Number(value) : value;
+      switch (teeType) {
+        case 0: return 'Unknown (0)';
+        case 1: return 'IntelTDX (1)';
+        case 2: return 'AmdSevSnp (2)';
+        default: return `Unknown (${teeType})`;
+      }
+    }
+
+    // ELType enum: 0=Unset, 1=Geth, 2=Reth
+    if (fieldName === 'elType') {
+      const elType = typeof value === 'bigint' ? Number(value) : value;
+      switch (elType) {
+        case 0: return 'Unset (0)';
+        case 1: return 'Geth (1)';
+        case 2: return 'Reth (2)';
+        default: return `Unknown (${elType})`;
+      }
+    }
+
+    // Golden measurement fields
+    if (fieldName === 'goldenMeasurement') {
+      const subField = parts[3];
+
+      // CloudType enum: 0=Unset, 1=GCP, 2=Azure
+      if (subField === 'cloudType') {
+        const cloudType = typeof value === 'bigint' ? Number(value) : value;
+        switch (cloudType) {
+          case 0: return 'Unset (0)';
+          case 1: return 'GCP (1)';
+          case 2: return 'Azure (2)';
+          default: return `Unknown (${cloudType})`;
+        }
+      }
+
+      // TEEType enum: 0=Unknown, 1=IntelTDX, 2=AmdSevSnp
+      if (subField === 'teeType') {
+        const teeType = typeof value === 'bigint' ? Number(value) : value;
+        switch (teeType) {
+          case 0: return 'Unknown (0)';
+          case 1: return 'IntelTDX (1)';
+          case 2: return 'AmdSevSnp (2)';
+          default: return `Unknown (${teeType})`;
+        }
+      }
+
+      // ELType enum: 0=Unset, 1=Geth, 2=Reth
+      if (subField === 'elType') {
+        const elType = typeof value === 'bigint' ? Number(value) : value;
+        switch (elType) {
+          case 0: return 'Unset (0)';
+          case 1: return 'Geth (1)';
+          case 2: return 'Reth (2)';
+          default: return `Unknown (${elType})`;
+        }
+      }
+
+      // Tag (string)
+      if (subField === 'tag' && typeof value === 'string') {
+        return value;
+      }
+
+      // Hash (bytes32)
+      if (subField === 'hash' && typeof value === 'string') {
+        return truncateHash(value);
+      }
+    }
+  }
+
   // Special handling for getAnchorRoot (returns tuple: [root: bytes32, l2SequenceNumber: uint256])
   if (functionName === 'getAnchorRoot' && Array.isArray(value) && value.length === 2) {
     const root = value[0];

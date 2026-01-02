@@ -705,5 +705,86 @@ export async function getViewFunctionData(
     }
   }
 
+  // Special handling for ProverRegistry attestedProvers mapping
+  const proverRegistryAddress = process.env.REACT_APP_L1_PROVER_REGISTRY_ADDRESS?.toLowerCase();
+  if (proverRegistryAddress && address.toLowerCase() === proverRegistryAddress) {
+    // Get nextInstanceId to know how many provers are registered
+    const nextInstanceId = results['nextInstanceId'];
+    if (nextInstanceId && typeof nextInstanceId === 'bigint') {
+      const count = Number(nextInstanceId);
+
+      // Query all registered provers (1 to nextInstanceId)
+      for (let instanceId = 1; instanceId <= count; instanceId++) {
+        try {
+          const proverResult = await client.readContract({
+            address: address as `0x${string}`,
+            abi,
+            functionName: 'attestedProvers',
+            args: [instanceId],
+          });
+
+          // Only add if prover address is non-zero
+          if (proverResult && typeof proverResult === 'object') {
+            const prover = proverResult as any;
+            if (prover.addr && prover.addr !== '0x0000000000000000000000000000000000000000') {
+              // Expand ProverInstance struct into individual fields
+              const addr = prover.addr || prover[0];
+              const validUntil = prover.validUntil || prover[1];
+              const ty = prover.ty || prover[2];
+              const goldenMeasurementHash = prover.goldenMeasurementHash || prover[3];
+
+              // Query goldenMeasurementRegistry to check if measurement is valid
+              try {
+                const measurementInfo = await client.readContract({
+                  address: address as `0x${string}`,
+                  abi,
+                  functionName: 'goldenMeasurementRegistry',
+                  args: [goldenMeasurementHash],
+                });
+
+                // measurementInfo is returned as an array: [cloudType, teeType, elType, tag]
+                if (measurementInfo && Array.isArray(measurementInfo) && measurementInfo.length >= 4) {
+                  const [cloudType, gmTeeType, gmElType, tag] = measurementInfo;
+
+                  // Convert to number for comparison
+                  const elTypeNum = typeof gmElType === 'bigint' ? Number(gmElType) : gmElType;
+
+                  // Skip prover if golden measurement is deregistered (elType == 0)
+                  if (elTypeNum === 0) {
+                    continue;
+                  }
+
+                  // Golden measurement is valid, add prover data
+                  results[`attestedProvers_${instanceId}_addr`] = addr;
+                  results[`attestedProvers_${instanceId}_validUntil`] = validUntil;
+
+                  // Extract teeType and elType from ProverType tuple
+                  if (typeof ty === 'object' && ty !== null) {
+                    const teeType = typeof ty.teeType !== 'undefined' ? ty.teeType : ty[0];
+                    const elType = typeof ty.elType !== 'undefined' ? ty.elType : ty[1];
+                    results[`attestedProvers_${instanceId}_teeType`] = teeType;
+                    results[`attestedProvers_${instanceId}_elType`] = elType;
+                  }
+
+                  // Add golden measurement details instead of just the hash
+                  results[`attestedProvers_${instanceId}_goldenMeasurement_cloudType`] = cloudType;
+                  results[`attestedProvers_${instanceId}_goldenMeasurement_teeType`] = gmTeeType;
+                  results[`attestedProvers_${instanceId}_goldenMeasurement_elType`] = gmElType;
+                  results[`attestedProvers_${instanceId}_goldenMeasurement_tag`] = tag;
+                  results[`attestedProvers_${instanceId}_goldenMeasurement_hash`] = goldenMeasurementHash;
+                }
+              } catch (error) {
+                // If measurement query fails, skip this prover
+                continue;
+              }
+            }
+          }
+        } catch (error) {
+          // Ignore errors
+        }
+      }
+    }
+  }
+
   return results;
 }
