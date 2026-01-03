@@ -29,6 +29,7 @@ export interface Predeploy {
   description: string;
   category: 'bridge' | 'vault' | 'factory' | 'system' | 'governance' | 'tee';
   isManageable: boolean;
+  isOwnerBased?: boolean; // True for contracts with owner() but not proxy-based (e.g., ProverRegistry, WorkloadVerifier)
   viewFunctions?: ViewFunction[]; // For contracts without owner
 }
 

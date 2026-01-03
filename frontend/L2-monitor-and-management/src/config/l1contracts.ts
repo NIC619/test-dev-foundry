@@ -91,6 +91,7 @@ export const L1_CONTRACTS: Predeploy[] = [
     description: 'Owner of L1 contract proxies',
     category: 'system',
     isManageable: true,
+    isOwnerBased: true, // Has owner() but is not a proxy contract
   },
   {
     name: 'SystemConfig',
@@ -140,6 +141,7 @@ export const L1_CONTRACTS: Predeploy[] = [
     description: 'Registry for TEE provers and attestation verification',
     category: 'tee',
     isManageable: true,
+    isOwnerBased: true, // Has owner() but is not a proxy contract
     viewFunctions: [
       { name: 'version', label: 'Version' },
       { name: 'chainID', label: 'Chain ID' },
@@ -156,6 +158,7 @@ export const L1_CONTRACTS: Predeploy[] = [
     description: 'Workload verifier for TEE attestations',
     category: 'tee',
     isManageable: true,
+    isOwnerBased: true, // Has owner() but is not a proxy contract
     viewFunctions: [
       { name: 'dcapAttestation', label: 'DCAP Attestation' },
       { name: 'snpAttestation', label: 'SNP Attestation' },

@@ -146,6 +146,7 @@ export const PREDEPLOYS: Predeploy[] = [
     description: 'Owner of all predeploy proxies',
     category: 'system',
     isManageable: true,
+    isOwnerBased: true, // Has owner() but is not a proxy contract
   },
   {
     name: 'SignalService',

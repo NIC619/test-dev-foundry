@@ -31,15 +31,27 @@ const PROXY_ADMIN_ABI = [
   },
 ] as const;
 
+const OWNABLE_ABI = [
+  {
+    type: 'function',
+    name: 'owner',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+] as const;
+
 export function OwnershipGraph({ contracts, rpcUrl }: OwnershipGraphProps) {
   const [ownershipData, setOwnershipData] = useState<{
     managedContracts: OwnershipNode[];
+    ownerBasedContracts: Array<{ contract: Predeploy; owner: string }>;
     unmanagedContracts: Predeploy[];
     proxyAdminOwner: string | null;
     loading: boolean;
     error: string | null;
   }>({
     managedContracts: [],
+    ownerBasedContracts: [],
     unmanagedContracts: [],
     proxyAdminOwner: null,
     loading: true,
@@ -70,6 +82,7 @@ export function OwnershipGraph({ contracts, rpcUrl }: OwnershipGraphProps) {
         if (!proxyAdminContract || !proxyAdminContract.address) {
           setOwnershipData({
             managedContracts: [],
+            ownerBasedContracts: [],
             unmanagedContracts: contracts.filter(c => !c.isManageable),
             proxyAdminOwner: null,
             loading: false,
@@ -91,18 +104,21 @@ export function OwnershipGraph({ contracts, rpcUrl }: OwnershipGraphProps) {
           console.error('Failed to get ProxyAdmin owner:', error);
         }
 
-        // Separate managed and unmanaged contracts
-        const managedContracts = contracts.filter(
-          c => c.isManageable && c.name !== 'ProxyAdmin' && c.address
+        // Separate contracts by type
+        const proxyBasedContracts = contracts.filter(
+          c => c.isManageable && !c.isOwnerBased && c.name !== 'ProxyAdmin' && c.address
+        );
+        const ownerBasedContractsToQuery = contracts.filter(
+          c => c.isManageable && c.isOwnerBased && c.name !== 'ProxyAdmin' && c.address
         );
         const unmanagedContracts = contracts.filter(
           c => !c.isManageable && c.address
         );
 
-        // Group managed contracts by their proxy admin
+        // Group proxy-based contracts by their proxy admin
         const contractsByAdmin: Record<string, Predeploy[]> = {};
 
-        for (const contract of managedContracts) {
+        for (const contract of proxyBasedContracts) {
           try {
             const admin = await client.readContract({
               address: proxyAdminContract.address as `0x${string}`,
@@ -126,6 +142,24 @@ export function OwnershipGraph({ contracts, rpcUrl }: OwnershipGraphProps) {
           }
         }
 
+        // Query owner-based contracts' owner() directly
+        const ownerBasedContractsWithOwners: Array<{ contract: Predeploy; owner: string }> = [];
+        for (const contract of ownerBasedContractsToQuery) {
+          try {
+            const owner = await client.readContract({
+              address: contract.address as `0x${string}`,
+              abi: OWNABLE_ABI,
+              functionName: 'owner',
+            });
+            ownerBasedContractsWithOwners.push({
+              contract,
+              owner: owner as string,
+            });
+          } catch (error) {
+            console.error(`Failed to get owner for ${contract.name}:`, error);
+          }
+        }
+
         // Build ownership nodes
         const ownershipNodes: OwnershipNode[] = Object.entries(contractsByAdmin).map(
           ([adminAddress, adminContracts]) => {
@@ -146,6 +180,7 @@ export function OwnershipGraph({ contracts, rpcUrl }: OwnershipGraphProps) {
 
         setOwnershipData({
           managedContracts: ownershipNodes,
+          ownerBasedContracts: ownerBasedContractsWithOwners,
           unmanagedContracts,
           proxyAdminOwner,
           loading: false,
@@ -155,6 +190,7 @@ export function OwnershipGraph({ contracts, rpcUrl }: OwnershipGraphProps) {
         console.error('Error fetching ownership data:', error);
         setOwnershipData({
           managedContracts: [],
+          ownerBasedContracts: [],
           unmanagedContracts: [],
           proxyAdminOwner: null,
           loading: false,
@@ -171,7 +207,7 @@ export function OwnershipGraph({ contracts, rpcUrl }: OwnershipGraphProps) {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const { managedContracts, unmanagedContracts, proxyAdminOwner, loading, error } = ownershipData;
+  const { managedContracts, ownerBasedContracts, unmanagedContracts, proxyAdminOwner, loading, error } = ownershipData;
 
   if (loading) {
     return (
@@ -198,14 +234,13 @@ export function OwnershipGraph({ contracts, rpcUrl }: OwnershipGraphProps) {
       {/* Managed Contracts */}
       {managedContracts.length > 0 && (
         <div className="ownership-section">
-          <h3>Managed Contracts</h3>
           {managedContracts.map((adminNode, index) => (
             <div key={index} className="ownership-tree">
               {/* Root: ProxyAdmin Owner (EOA) */}
               {proxyAdminOwner && adminNode.name === 'ProxyAdmin' && (
                 <div className="ownership-level">
                   <div className="ownership-node root-node">
-                    <span className="node-label">EOA (ProxyAdmin Owner)</span>
+                    <span className="node-label">Owner</span>
                     <span
                       className="node-address clickable"
                       title={proxyAdminOwner}
@@ -262,13 +297,68 @@ export function OwnershipGraph({ contracts, rpcUrl }: OwnershipGraphProps) {
         </div>
       )}
 
+      {/* Owner-Based Contracts */}
+      {ownerBasedContracts.length > 0 && (() => {
+        // Group owner-based contracts by their owner
+        const contractsByOwner: Record<string, Array<{ contract: Predeploy; owner: string }>> = {};
+        ownerBasedContracts.forEach(item => {
+          const ownerKey = item.owner.toLowerCase();
+          if (!contractsByOwner[ownerKey]) {
+            contractsByOwner[ownerKey] = [];
+          }
+          contractsByOwner[ownerKey].push(item);
+        });
+
+        return (
+          <div className="ownership-section">
+            {Object.entries(contractsByOwner).map(([_, items], index) => (
+              <div key={index} className="ownership-tree">
+                {/* Owner (EOA or Contract) */}
+                <div className="ownership-level">
+                  <div className="ownership-node root-node">
+                    <span className="node-label">Owner</span>
+                    <span
+                      className="node-address clickable"
+                      title={items[0].owner}
+                      onClick={() => copyToClipboard(items[0].owner)}
+                    >
+                      {truncateAddress(items[0].owner)}
+                      {copiedAddress === items[0].owner && ' ✓'}
+                    </span>
+                  </div>
+                  <div className="ownership-arrow">↓</div>
+                </div>
+
+                {/* Owner-Based Contracts under same owner */}
+                <div className="ownership-level">
+                  <div className="ownership-children">
+                    {items.map((item, itemIndex) => (
+                      <div key={itemIndex} className="ownership-node child-node">
+                        <span className="node-label">{item.contract.name}</span>
+                        <span
+                          className="node-address clickable"
+                          title={item.contract.address}
+                          onClick={() => copyToClipboard(item.contract.address)}
+                        >
+                          {truncateAddress(item.contract.address)}
+                          {copiedAddress === item.contract.address && ' ✓'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Unmanaged Contracts */}
       {unmanagedContracts.length > 0 && (
         <div className="ownership-section">
-          <h3>Non-Managed Contracts</h3>
           <div className="unmanaged-contracts">
             {unmanagedContracts.map((contract, index) => (
-              <div key={index} className="ownership-node standalone-node">
+              <div key={index} className="ownership-node child-node">
                 <span className="node-label">{contract.name}</span>
                 <span
                   className="node-address clickable"

@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi';
 import { L1_CONTRACTS } from '../config/l1contracts';
 import { getContractInfo, generateTransferOwnershipCalldata, generateChangeProxyAdminCalldata, generateUpgradeCalldata, isValidAddress, DEFAULT_L1_RPC_URL } from '../utils/contracts';
 import ContractCard from '../components/ContractCard';
+import { OwnershipGraph } from '../components/OwnershipGraph';
 import './L1Contracts.css';
 
 type FilterCategory = 'all' | 'bridge' | 'vault' | 'factory' | 'system' | 'governance' | 'tee';
@@ -286,6 +287,11 @@ export default function L1ContractsPage() {
           />
         ))}
       </div>
+
+      <OwnershipGraph
+        contracts={L1_CONTRACTS}
+        rpcUrl={process.env.REACT_APP_L1_RPC_URL || DEFAULT_L1_RPC_URL}
+      />
 
       {selectedContract && actionType && (
         <div className="modal-overlay" onClick={resetForm}>
