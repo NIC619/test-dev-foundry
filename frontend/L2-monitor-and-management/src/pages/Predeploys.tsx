@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi';
 import { PREDEPLOYS } from '../config/predeploys';
 import { getContractInfo, generateTransferOwnershipCalldata, generateChangeProxyAdminCalldata, generateUpgradeCalldata, isValidAddress } from '../utils/contracts';
 import ContractCard from '../components/ContractCard';
+import { OwnershipGraph } from '../components/OwnershipGraph';
 import './Predeploys.css';
 
 type FilterCategory = 'all' | 'bridge' | 'vault' | 'factory' | 'system' | 'governance' | 'tee';
@@ -273,6 +274,11 @@ export default function PredeploysPage() {
           />
         ))}
       </div>
+
+      <OwnershipGraph
+        contracts={PREDEPLOYS}
+        rpcUrl={process.env.REACT_APP_L2_RPC_URL || ''}
+      />
 
       {selectedPredeploy && actionType && (
         <div className="modal-overlay" onClick={resetForm}>
