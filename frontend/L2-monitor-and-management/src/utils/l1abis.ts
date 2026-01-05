@@ -202,13 +202,6 @@ export const OPTIMISM_PORTAL_ABI = [
   },
   {
     type: 'function',
-    name: 'ethLockbox',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'address' }],
-  },
-  {
-    type: 'function',
     name: 'anchorStateRegistry',
     stateMutability: 'view',
     inputs: [],
@@ -376,31 +369,6 @@ export const SYSTEM_CONFIG_ABI = [
         ],
       },
     ],
-  },
-] as const satisfies Abi;
-
-// ABI for EthLockbox contract
-export const ETH_LOCKBOX_ABI = [
-  {
-    type: 'function',
-    name: 'version',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'string' }],
-  },
-  {
-    type: 'function',
-    name: 'systemConfig',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'address' }],
-  },
-  {
-    type: 'function',
-    name: 'paused',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ type: 'bool' }],
   },
 ] as const satisfies Abi;
 
@@ -597,11 +565,6 @@ const buildL1ContractABIs = (): Record<string, Abi> => {
   const systemConfig = process.env.REACT_APP_L1_SYSTEM_CONFIG_ADDRESS;
   if (systemConfig) {
     mapping[systemConfig.toLowerCase()] = SYSTEM_CONFIG_ABI;
-  }
-
-  const ethLockbox = process.env.REACT_APP_L1_ETH_LOCKBOX_ADDRESS;
-  if (ethLockbox) {
-    mapping[ethLockbox.toLowerCase()] = ETH_LOCKBOX_ABI;
   }
 
   const proverRegistry = process.env.REACT_APP_L1_PROVER_REGISTRY_ADDRESS;

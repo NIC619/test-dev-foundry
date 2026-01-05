@@ -45,18 +45,6 @@ export const L1_CONTRACTS: Predeploy[] = [
     ],
   },
   {
-    name: 'EthLockbox',
-    address: process.env.REACT_APP_L1_ETH_LOCKBOX_ADDRESS || '',
-    description: 'ETH lockbox for bridging',
-    category: 'bridge',
-    isManageable: true,
-    viewFunctions: [
-      { name: 'version', label: 'Version' },
-      { name: 'systemConfig', label: 'System Config' },
-      { name: 'paused', label: 'Paused' },
-    ],
-  },
-  {
     name: 'L1StandardBridge',
     address: process.env.REACT_APP_L1_STANDARD_BRIDGE_ADDRESS || '',
     description: 'L1 standard bridge for cross-chain transfers',
@@ -79,7 +67,6 @@ export const L1_CONTRACTS: Predeploy[] = [
       { name: 'version', label: 'Version' },
       { name: 'proofMaturityDelaySeconds', label: 'Proof Maturity Delay (seconds)' },
       { name: 'systemConfig', label: 'System Config' },
-      { name: 'ethLockbox', label: 'ETH Lockbox' },
       { name: 'anchorStateRegistry', label: 'Anchor State Registry' },
       { name: 'paused', label: 'Paused' },
       { name: 'disputeGameFactory', label: 'Dispute Game Factory' },
