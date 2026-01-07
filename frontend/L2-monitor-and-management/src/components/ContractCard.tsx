@@ -216,6 +216,15 @@ export default function ContractCard({
         {predeploy.viewFunctions && predeploy.viewFunctions.length > 0 && (
           predeploy.viewFunctions.map(vf => {
             const rawValue = viewData[vf.name];
+
+            // Skip expiration display if corresponding paused state is false
+            if (vf.name === 'expiration_global' && !viewData['paused_global']) {
+              return null;
+            }
+            if (vf.name === 'expiration_portal' && !viewData['paused_portal']) {
+              return null;
+            }
+
             const isCopyable = isCopyableValue(vf.name, rawValue);
             const displayValue = rawValue !== undefined && rawValue !== null
               ? formatViewData(rawValue, vf.name)

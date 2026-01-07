@@ -649,6 +649,11 @@ export async function getViewFunctionData(
       continue;
     }
 
+    // Skip SuperchainConfig parameterized functions since we handle them below
+    if (functionName.startsWith('paused_') || functionName.startsWith('expiration_')) {
+      continue;
+    }
+
     try {
       const result = await client.readContract({
         address: address as `0x${string}`,
@@ -782,6 +787,73 @@ export async function getViewFunctionData(
         } catch (error) {
           // Ignore errors
         }
+      }
+    }
+  }
+
+  // Special handling for SuperchainConfig paused and expiration functions
+  const superchainConfigAddress = process.env.REACT_APP_L1_SUPERCHAIN_CONFIG_ADDRESS?.toLowerCase();
+  if (superchainConfigAddress && address.toLowerCase() === superchainConfigAddress) {
+    const optimismPortalAddress = process.env.REACT_APP_L1_OPTIMISM_PORTAL_ADDRESS;
+    const zeroAddress = '0x0000000000000000000000000000000000000000';
+
+    // Query paused state for global (address(0))
+    if (functionNames.includes('paused_global')) {
+      try {
+        const pausedGlobal = await client.readContract({
+          address: address as `0x${string}`,
+          abi,
+          functionName: 'paused',
+          args: [zeroAddress as `0x${string}`],
+        });
+        results['paused_global'] = pausedGlobal;
+      } catch (error) {
+        results['paused_global'] = null;
+      }
+    }
+
+    // Query paused state for OptimismPortal
+    if (functionNames.includes('paused_portal') && optimismPortalAddress) {
+      try {
+        const pausedPortal = await client.readContract({
+          address: address as `0x${string}`,
+          abi,
+          functionName: 'paused',
+          args: [optimismPortalAddress as `0x${string}`],
+        });
+        results['paused_portal'] = pausedPortal;
+      } catch (error) {
+        results['paused_portal'] = null;
+      }
+    }
+
+    // Query expiration for global (address(0))
+    if (functionNames.includes('expiration_global')) {
+      try {
+        const expirationGlobal = await client.readContract({
+          address: address as `0x${string}`,
+          abi,
+          functionName: 'expiration',
+          args: [zeroAddress as `0x${string}`],
+        });
+        results['expiration_global'] = expirationGlobal;
+      } catch (error) {
+        results['expiration_global'] = null;
+      }
+    }
+
+    // Query expiration for OptimismPortal
+    if (functionNames.includes('expiration_portal') && optimismPortalAddress) {
+      try {
+        const expirationPortal = await client.readContract({
+          address: address as `0x${string}`,
+          abi,
+          functionName: 'expiration',
+          args: [optimismPortalAddress as `0x${string}`],
+        });
+        results['expiration_portal'] = expirationPortal;
+      } catch (error) {
+        results['expiration_portal'] = null;
       }
     }
   }

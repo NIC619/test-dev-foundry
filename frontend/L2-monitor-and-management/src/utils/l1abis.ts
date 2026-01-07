@@ -234,6 +234,20 @@ export const SYSTEM_CONFIG_ABI = [
   },
   {
     type: 'function',
+    name: 'guardian',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'superchainConfig',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
     name: 'batcherHash',
     stateMutability: 'view',
     inputs: [],
@@ -369,6 +383,45 @@ export const SYSTEM_CONFIG_ABI = [
         ],
       },
     ],
+  },
+] as const satisfies Abi;
+
+// ABI for SuperchainConfig contract
+export const SUPERCHAIN_CONFIG_ABI = [
+  {
+    type: 'function',
+    name: 'version',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'string' }],
+  },
+  {
+    type: 'function',
+    name: 'guardian',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'pauseExpiry',
+    stateMutability: 'pure',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'paused',
+    stateMutability: 'view',
+    inputs: [{ name: '_identifier', type: 'address' }],
+    outputs: [{ type: 'bool' }],
+  },
+  {
+    type: 'function',
+    name: 'expiration',
+    stateMutability: 'view',
+    inputs: [{ name: '_identifier', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
   },
 ] as const satisfies Abi;
 
@@ -565,6 +618,11 @@ const buildL1ContractABIs = (): Record<string, Abi> => {
   const systemConfig = process.env.REACT_APP_L1_SYSTEM_CONFIG_ADDRESS;
   if (systemConfig) {
     mapping[systemConfig.toLowerCase()] = SYSTEM_CONFIG_ABI;
+  }
+
+  const superchainConfig = process.env.REACT_APP_L1_SUPERCHAIN_CONFIG_ADDRESS;
+  if (superchainConfig) {
+    mapping[superchainConfig.toLowerCase()] = SUPERCHAIN_CONFIG_ABI;
   }
 
   const proverRegistry = process.env.REACT_APP_L1_PROVER_REGISTRY_ADDRESS;

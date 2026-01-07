@@ -88,6 +88,8 @@ export const L1_CONTRACTS: Predeploy[] = [
     isManageable: true,
     viewFunctions: [
       { name: 'version', label: 'Version' },
+      { name: 'guardian', label: 'Guardian' },
+      { name: 'superchainConfig', label: 'Superchain Config' },
       { name: 'batcherHash', label: 'Batcher Hash' },
       { name: 'gasLimit', label: 'Gas Limit' },
       { name: 'basefeeScalar', label: 'Base Fee Scalar' },
@@ -112,6 +114,22 @@ export const L1_CONTRACTS: Predeploy[] = [
       { name: 'resourceConfig_minimumBaseFee', label: 'Resource Config - Minimum Base Fee' },
       { name: 'resourceConfig_systemTxMaxGas', label: 'Resource Config - System Tx Max Gas' },
       { name: 'resourceConfig_maximumBaseFee', label: 'Resource Config - Maximum Base Fee' },
+    ],
+  },
+  {
+    name: 'SuperchainConfig',
+    address: process.env.REACT_APP_L1_SUPERCHAIN_CONFIG_ADDRESS || '',
+    description: 'Superchain configuration and pause management',
+    category: 'system',
+    isManageable: true,
+    viewFunctions: [
+      { name: 'version', label: 'Version' },
+      { name: 'guardian', label: 'Guardian' },
+      { name: 'pauseExpiry', label: 'Pause Expiry (seconds)' },
+      { name: 'paused_global', label: 'ALL PAUSED' },
+      { name: 'paused_portal', label: 'PORTAL PAUSED' },
+      { name: 'expiration_global', label: 'All Pause Expiration' },
+      { name: 'expiration_portal', label: 'Portal Pause Expiration' },
     ],
   },
   {

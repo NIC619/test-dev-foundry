@@ -1,12 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
+import { createPublicClient, http } from 'viem';
 import { L1_CONTRACTS } from '../config/l1contracts';
 import { getContractInfo, generateTransferOwnershipCalldata, generateChangeProxyAdminCalldata, generateUpgradeCalldata, isValidAddress, DEFAULT_L1_RPC_URL } from '../utils/contracts';
 import ContractCard from '../components/ContractCard';
 import { OwnershipGraph } from '../components/OwnershipGraph';
+import { PauseFlowGraph } from '../components/PauseFlowGraph';
 import './L1Contracts.css';
 
 type FilterCategory = 'all' | 'bridge' | 'vault' | 'factory' | 'system' | 'governance' | 'tee';
+
+const GUARDIAN_ABI = [
+  {
+    type: 'function',
+    name: 'guardian',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+] as const;
 
 export default function L1ContractsPage() {
   const { address: connectedAddress, isConnected } = useAccount();
@@ -17,12 +29,41 @@ export default function L1ContractsPage() {
   const [newOwner, setNewOwner] = useState('');
   const [newImplementation, setNewImplementation] = useState('');
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [guardianAddress, setGuardianAddress] = useState<string | null>(null);
 
   const filtered = L1_CONTRACTS.filter(p => {
     const categoryMatch = filterCategory === 'all' || p.category === filterCategory;
     const manageableMatch = !showOnlyManageable || p.isManageable;
     return categoryMatch && manageableMatch;
   });
+
+  // Fetch guardian address from SuperchainConfig
+  useEffect(() => {
+    const fetchGuardian = async () => {
+      const superchainConfigAddress = process.env.REACT_APP_L1_SUPERCHAIN_CONFIG_ADDRESS;
+      if (!superchainConfigAddress) {
+        return;
+      }
+
+      try {
+        const client = createPublicClient({
+          transport: http(process.env.REACT_APP_L1_RPC_URL || DEFAULT_L1_RPC_URL),
+        });
+
+        const guardian = await client.readContract({
+          address: superchainConfigAddress as `0x${string}`,
+          abi: GUARDIAN_ABI,
+          functionName: 'guardian',
+        });
+
+        setGuardianAddress(guardian as string);
+      } catch (error) {
+        console.error('Failed to fetch guardian address:', error);
+      }
+    };
+
+    fetchGuardian();
+  }, []);
 
   const handleTransferOwnership = async (predeploy: typeof L1_CONTRACTS[0]) => {
     if (!isValidAddress(newOwner)) {
@@ -291,6 +332,14 @@ export default function L1ContractsPage() {
       <OwnershipGraph
         contracts={L1_CONTRACTS}
         rpcUrl={process.env.REACT_APP_L1_RPC_URL || DEFAULT_L1_RPC_URL}
+      />
+
+      <PauseFlowGraph
+        guardianAddress={guardianAddress}
+        superchainConfigAddress={process.env.REACT_APP_L1_SUPERCHAIN_CONFIG_ADDRESS || ''}
+        systemConfigAddress={process.env.REACT_APP_L1_SYSTEM_CONFIG_ADDRESS || ''}
+        optimismPortalAddress={process.env.REACT_APP_L1_OPTIMISM_PORTAL_ADDRESS || ''}
+        l1StandardBridgeAddress={process.env.REACT_APP_L1_STANDARD_BRIDGE_ADDRESS || ''}
       />
 
       {selectedContract && actionType && (

@@ -311,15 +311,86 @@ REACT_APP_TEE_NODE_RPC_URL=http://34.1.254.59:8545
   - Visual arrows showing ownership flow
   - Three sections: Managed Contracts (proxy-based), Owner-Based Contracts, Non-Managed Contracts
 
+## Recent Updates (January 2026)
+
+### Emergency Pause/Unpause Call Flow Graph (NEW)
+- **Purpose**: Visualizes the emergency pause mechanism control flow in Optimism
+- **Components**:
+  - **Guardian**: (Purple) EOA/Multi-sig that can trigger pause/unpause
+  - **SuperchainConfig**: (Pink) Central pause authority that stores pause state
+  - **SystemConfig**: (Orange/Pink) Pause state router
+  - **OptimismPortal**: (Light Blue) Consumer that blocks withdrawals when paused (allows deposits)
+  - **L1StandardBridge**: (Light Blue) Consumer that blocks all bridging when paused
+- **Features**:
+  - Visual flow with directional arrows
+  - Write arrows (↓) for pause/unpause triggers
+  - Read arrows (↑) for state checks
+  - Color-coded nodes by role
+  - Key information panel with pause mechanics summary
+  - Legend explaining arrow types
+  - Contract effects displayed (what gets blocked vs allowed)
+- **Implementation**:
+  - New component: `src/components/PauseFlowGraph.tsx`
+  - Styling: `src/components/PauseFlowGraph.css`
+  - Integrated into L1 Contracts page below ownership graph
+  - Dynamically fetches Guardian address from SuperchainConfig
+- **Control Flow**:
+  1. Guardian triggers pause/unpause on SuperchainConfig
+  2. SuperchainConfig stores pause state
+  3. SystemConfig reads pause state from SuperchainConfig
+  4. OptimismPortal and L1StandardBridge check SystemConfig for pause state
+- **Key Information Displayed**:
+  - Who can pause: Only Guardian
+  - Pause duration: Max 3 months (auto-expiry)
+  - Asymmetric control: Blocks withdrawals, allows deposits
+
+### Ownership Graph Improvements
+- **Removed section headers**: Cleaner UI - only main "Contract Ownership Graph" title remains
+- **Simplified EOA label**: Changed "EOA (ProxyAdmin Owner)" to just "Owner" (purple color indicates EOA)
+- **Consistent color scheme**:
+  - Purple: EOAs/Owners
+  - Pink: Contracts that manage others (only ProxyAdmin)
+  - Light blue: All other contracts (proxy-based, owner-based, unmanaged)
+- **Grouped owner-based contracts**: Contracts sharing same owner displayed together
+
+### EthLockbox Removal
+- Removed EthLockbox contract from L1 contracts list
+- Removed all references from:
+  - Contract configuration (l1contracts.ts)
+  - ABIs (l1abis.ts)
+  - Environment files (.env, .env.example)
+  - OptimismPortal view functions
+
+### SystemConfig Enhancements
+- Added `guardian` view function - displays guardian address
+- Added `superchainConfig` view function - displays SuperchainConfig contract address
+
+### SuperchainConfig Contract (NEW)
+- **Address**: Configurable via `REACT_APP_L1_SUPERCHAIN_CONFIG_ADDRESS`
+- **Description**: Superchain configuration and pause management
+- **View Functions**:
+  - `version` - Contract version
+  - `guardian` - Guardian address
+  - `pauseExpiry` - Pause expiry duration in seconds
+  - **Pause State Queries** (with parameterized functions):
+    - `ALL PAUSED` - Global pause state (queries `paused(address(0))`)
+    - `PORTAL PAUSED` - OptimismPortal pause state (queries `paused(PORTAL_ADDRESS)`)
+    - `All Pause Expiration` - Global pause expiration timestamp (only shown if paused)
+    - `Portal Pause Expiration` - Portal pause expiration timestamp (only shown if paused)
+- **Implementation Details**:
+  - Added support for parameterized view functions
+  - Special handling in `getViewFunctionData` for functions requiring address parameters
+  - Conditional display: Expiration fields only shown when corresponding pause state is true
+  - Similar pattern to DisputeGameFactory and ProverRegistry special handling
+
 ## Next Steps
 
-1. Update EthLockbox address in .env once deployed
-2. Test all L1 contracts functionality
-3. Update README with L1 contracts documentation
-4. Consider adding more view functions to contracts as needed
+1. Test all L1 contracts functionality
+2. Update README with L1 contracts documentation
+3. Consider adding more view functions to contracts as needed
 
 ## Notes
-- Build size: ~121.5 kB (gzipped)
+- Build size: ~122.58 kB (gzipped)
 - All builds completing successfully
 - No TypeScript errors (only minor warnings)
 - All L1 contract addresses now fully configurable via environment variables
