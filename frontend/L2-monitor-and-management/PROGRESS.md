@@ -163,10 +163,14 @@ In `contracts.ts` (getViewFunctionData):
 ### Environment Variables Required
 ```bash
 REACT_APP_L1_RPC_URL=https://ethereum-holesky-rpc.publicnode.com
+REACT_APP_L1_EXPLORER_API_URL=https://api.etherscan.io/v2/api
+REACT_APP_L1_EXPLORER_API_KEY=your_etherscan_api_key
 REACT_APP_L2_RPC_URL=http://34.51.145.209:8545
 REACT_APP_GATEWAY_RPC_URL=https://testnet-unifi-rpc.puffer.fi/
 REACT_APP_MAIN_NODE_RPC_URL=http://34.51.145.209:8545
 REACT_APP_TEE_NODE_RPC_URL=http://34.1.254.59:8545
+REACT_APP_BATCHER_ADDRESS=0x46EB9DBf04b800B78a43bbE59f7e613Be4E340D1
+REACT_APP_PROPOSER_ADDRESS=0x4aD30eCFb92b9311A853d296c515fb0D6505d89C
 ```
 
 ## Recent Updates
@@ -390,7 +394,7 @@ REACT_APP_TEE_NODE_RPC_URL=http://34.1.254.59:8545
 3. Consider adding more view functions to contracts as needed
 
 ## Notes
-- Build size: ~122.58 kB (gzipped)
+- Build size: ~124.11 kB (gzipped)
 - All builds completing successfully
 - No TypeScript errors (only minor warnings)
 - All L1 contract addresses now fully configurable via environment variables
@@ -410,3 +414,61 @@ REACT_APP_TEE_NODE_RPC_URL=http://34.1.254.59:8545
   - Owner-based contracts displayed in separate "Owner-Based Contracts" section
   - Queries owner() directly instead of through ProxyAdmin for these contracts
   - **Groups by owner**: Contracts sharing the same owner are grouped under one owner node
+
+### Chain Status Page (NEW)
+- **Purpose**: Monitor critical chain roles and block information
+- **Formerly**: Block Monitor page (renamed to Chain Status)
+- **Features**:
+  - **Role Monitoring**: Real-time monitoring of Batcher and Proposer
+  - **Block Information**: Block data across all RPC endpoints (Gateway, Main Node, TEE Node)
+  - Refresh functionality for manual updates
+- **Implementation**:
+  - New page: `src/pages/ChainStatus.tsx` (renamed from BlockMonitor.tsx)
+  - Styling: `src/pages/ChainStatus.css` (renamed from BlockMonitor.css)
+  - Updated App.tsx routing and navigation
+  - Build size: ~123.77 kB (gzipped, +1.23 kB)
+
+#### RoleMonitor Component (NEW)
+- **Purpose**: Monitor Batcher and Proposer activity and balance on L1
+- **Monitored Roles**: Configurable via environment variables
+  - **Batcher**: `REACT_APP_BATCHER_ADDRESS`
+  - **Proposer**: `REACT_APP_PROPOSER_ADDRESS`
+  - Warning banner displayed if addresses are missing
+- **Activity Monitoring**:
+  - **Primary method**: Fetches transaction history via Block Explorer API (Etherscan v2)
+    - Queries most recent transaction directly from account history
+    - Extremely fast (instant) regardless of transaction age
+    - Uses `REACT_APP_L1_EXPLORER_API_URL` and `REACT_APP_L1_EXPLORER_API_KEY`
+    - Automatically queries chain ID from RPC and passes to v2 API (supports all chains)
+  - **Fallback method**: Scans recent L1 blocks via RPC if API unavailable
+    - Checks last 100 blocks only (reduced from 1000 for faster fallback)
+    - Sequential block checking
+  - 6 warning levels: 5, 30, 60, 240, 720, 1440 minutes (1440 most severe)
+  - Displays last transaction timestamp and time since
+  - Color-coded warnings: Medium (yellow), High (orange), Critical (red)
+  - Special handling: "No recent transaction found" = Level 6
+- **Balance Monitoring**:
+  - Queries L1 ETH balance using viem
+  - 5 warning levels: 5, 2.5, 1, 0.5, 0.25 ETH (0.25 most severe)
+  - Displays balance with 4 decimal places
+  - Same color-coded warning system
+- **Auto-Refresh**: Updates every 30 seconds automatically
+- **UI/UX**:
+  - Warning level text removed - color coding provides sufficient visual indication
+  - Warning colors: Yellow (medium), Orange (high), Red (critical)
+- **Implementation**:
+  - Component: `src/components/RoleMonitor.tsx`
+  - Styling: `src/components/RoleMonitor.css`
+  - Uses viem's `createPublicClient`, `getBalance`, and `getBlock`
+  - Integrated into Chain Status page with two instances (one per role)
+  - Positioned below Block Information section
+- **Warning Level Logic**:
+  - Activity: Checks time since last transaction against threshold array (descending order)
+  - Balance: Checks ALL thresholds to find the most severe one (lowest threshold) that balance is below
+    - Below 5 ETH but ≥ 2.5 ETH = Level 1 (least severe, yellow)
+    - Below 2.5 ETH but ≥ 1 ETH = Level 2 (yellow)
+    - Below 1 ETH but ≥ 0.5 ETH = Level 3 (orange)
+    - Below 0.5 ETH but ≥ 0.25 ETH = Level 4 (orange)
+    - Below 0.25 ETH = Level 5 (most severe, red)
+  - Message displays the most severe threshold exceeded
+  - Levels mapped to CSS classes: 1-2 = medium, 3-4 = high, 5+ = critical

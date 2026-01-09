@@ -31,67 +31,95 @@ export function RoleMonitor({
   });
 
   useEffect(() => {
+    const fetchLastTransaction = async (client: any): Promise<number | null> => {
+      // Try to use block explorer API if configured
+      const explorerApiUrl = process.env.REACT_APP_L1_EXPLORER_API_URL;
+      const explorerApiKey = process.env.REACT_APP_L1_EXPLORER_API_KEY || '';
+
+      if (explorerApiUrl) {
+        try {
+          // Get chain ID from RPC
+          const chainId = await client.getChainId();
+
+          // Fetch transaction list from block explorer (e.g., Etherscan)
+          // Get only the most recent transaction
+          const params = new URLSearchParams({
+            chainid: chainId.toString(),
+            module: 'account',
+            action: 'txlist',
+            address: address,
+            startblock: '0',
+            endblock: '99999999',
+            page: '1',
+            offset: '1',
+            sort: 'desc',
+          });
+
+          if (explorerApiKey) {
+            params.append('apikey', explorerApiKey);
+          }
+
+          const response = await fetch(`${explorerApiUrl}?${params}`);
+          const data = await response.json();
+
+          // Etherscan v2 API format
+          if (data.status === '1' && data.result && data.result.length > 0) {
+            const latestTx = data.result[0];
+            return parseInt(latestTx.timeStamp, 10);
+          }
+        } catch (error) {
+          console.warn(`Block explorer API failed for ${roleName}, falling back to RPC:`, error);
+        }
+      }
+
+      // Fallback: Check recent blocks via RPC (much faster with limited range)
+      try {
+        const currentBlock = await client.getBlockNumber();
+        // Only check last 100 blocks as fallback
+        const blocksToCheck = 100n;
+        const startBlock = currentBlock - blocksToCheck;
+
+        for (let i = currentBlock; i >= startBlock; i--) {
+          try {
+            const block = await client.getBlock({
+              blockNumber: i,
+              includeTransactions: true,
+            });
+
+            if (block.transactions && Array.isArray(block.transactions)) {
+              for (const tx of block.transactions) {
+                if (typeof tx === 'object' && tx.from) {
+                  if (tx.from.toLowerCase() === address.toLowerCase()) {
+                    return Number(block.timestamp);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            // Skip block on error
+            continue;
+          }
+        }
+      } catch (error) {
+        console.warn(`RPC fallback failed for ${roleName}:`, error);
+      }
+
+      return null;
+    };
+
     const fetchRoleStatus = async () => {
       try {
         const client = createPublicClient({
           transport: http(process.env.REACT_APP_L1_RPC_URL || DEFAULT_L1_RPC_URL),
         });
 
-        // Fetch balance
-        const balanceWei = await client.getBalance({
-          address: address as `0x${string}`,
-        });
+        // Fetch balance and latest transaction in parallel
+        const [balanceWei, lastTxTimestamp] = await Promise.all([
+          client.getBalance({ address: address as `0x${string}` }),
+          fetchLastTransaction(client),
+        ]);
+
         const balanceEth = formatEther(balanceWei);
-
-        // Fetch latest transaction
-        const currentBlock = await client.getBlockNumber();
-        let lastTxTimestamp: number | null = null;
-
-        // Search backwards through recent blocks to find the last transaction from this address
-        // Check last 1000 blocks (should cover several hours of activity)
-        const blocksToCheck = 1000n;
-        const startBlock = currentBlock - blocksToCheck;
-        const batchSize = 20; // Check 20 blocks at a time in parallel
-
-        // Search in batches for better performance
-        for (let batchStart = currentBlock; batchStart >= startBlock && lastTxTimestamp === null; batchStart -= BigInt(batchSize)) {
-          const batchEnd = batchStart - BigInt(batchSize - 1) < startBlock
-            ? startBlock
-            : batchStart - BigInt(batchSize - 1);
-
-          // Fetch blocks in parallel
-          const blockPromises: Promise<any>[] = [];
-          for (let i = batchStart; i >= batchEnd; i--) {
-            blockPromises.push(
-              client.getBlock({
-                blockNumber: i,
-                includeTransactions: true,
-              }).catch(() => null)
-            );
-          }
-
-          const results = await Promise.all(blockPromises);
-
-          // Check results in order (newest first)
-          for (const block of results) {
-            if (!block) continue;
-
-            if (block.transactions && Array.isArray(block.transactions)) {
-              for (const tx of block.transactions) {
-                if (typeof tx === 'object' && tx.from) {
-                  if (tx.from.toLowerCase() === address.toLowerCase()) {
-                    lastTxTimestamp = Number(block.timestamp);
-                    break;
-                  }
-                }
-              }
-            }
-
-            if (lastTxTimestamp !== null) {
-              break;
-            }
-          }
-        }
 
         setStatus({
           lastTxTimestamp,
