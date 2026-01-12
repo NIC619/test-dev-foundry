@@ -29,7 +29,23 @@
   background: #f7fafc;
   padding: 6px 12px;
   border-radius: 6px;
-  cursor: help;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.role-address.copyable:hover {
+  background: #e2e8f0;
+  color: #2d3748;
+}
+
+.role-address.copyable:active {
+  transform: scale(0.98);
+}
+
+.copy-feedback {
+  color: #38a169;
+  font-weight: 600;
 }
 
 .role-status {
@@ -85,6 +101,22 @@
   color: #2d3748;
   font-size: 0.95rem;
   font-weight: 500;
+}
+
+.tx-link {
+  color: #3b82f6;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid transparent;
+}
+
+.tx-link:hover {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
+.tx-link:active {
+  transform: scale(0.98);
 }
 
 .warning-box {

@@ -165,6 +165,7 @@ In `contracts.ts` (getViewFunctionData):
 REACT_APP_L1_RPC_URL=https://ethereum-holesky-rpc.publicnode.com
 REACT_APP_L1_EXPLORER_API_URL=https://api.etherscan.io/v2/api
 REACT_APP_L1_EXPLORER_API_KEY=your_etherscan_api_key
+REACT_APP_L1_EXPLORER_BASE_URL=https://hoodi.etherscan.io
 REACT_APP_L2_RPC_URL=http://34.51.145.209:8545
 REACT_APP_GATEWAY_RPC_URL=https://testnet-unifi-rpc.puffer.fi/
 REACT_APP_MAIN_NODE_RPC_URL=http://34.51.145.209:8545
@@ -394,8 +395,10 @@ REACT_APP_PROPOSER_ADDRESS=0x4aD30eCFb92b9311A853d296c515fb0D6505d89C
 3. Consider adding more view functions to contracts as needed
 
 ## Notes
-- Build size: ~124.11 kB (gzipped)
+- Build size: ~124.4 kB (gzipped)
 - All builds completing successfully
+- All timestamps formatted in English (en-US) locale with 12-hour format
+- **UniFiFeeVault ABI fixed**: Added dedicated ABI with l2Owner, withdrawalNetworkL2Owner, percentageL2Owner, l1UniFiRewardDistributorContract, minWithdrawalAmount, and totalProcessed functions
 - No TypeScript errors (only minor warnings)
 - All L1 contract addresses now fully configurable via environment variables
 - Signal Service contracts added for both L1 and L2
@@ -456,6 +459,9 @@ REACT_APP_PROPOSER_ADDRESS=0x4aD30eCFb92b9311A853d296c515fb0D6505d89C
 - **UI/UX**:
   - Warning level text removed - color coding provides sufficient visual indication
   - Warning colors: Yellow (medium), Orange (high), Red (critical)
+  - **Copyable addresses**: Click on role address to copy to clipboard (shows checkmark feedback)
+  - **Transaction links**: Last transaction timestamp is clickable, opens transaction on block explorer in new tab
+    - Uses `REACT_APP_L1_EXPLORER_BASE_URL` (e.g., https://hoodi.etherscan.io for Hoodi network)
 - **Implementation**:
   - Component: `src/components/RoleMonitor.tsx`
   - Styling: `src/components/RoleMonitor.css`

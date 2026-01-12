@@ -255,6 +255,53 @@ export const FEE_VAULT_EXTENDED_ABI = [
   },
 ] as const satisfies Abi;
 
+// ABI for UniFiFeeVault
+export const UNIFI_FEE_VAULT_ABI = [
+  ...VAULT_ABI,
+  {
+    type: 'function',
+    name: 'l2Owner',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'withdrawalNetworkL2Owner',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint8' }],
+  },
+  {
+    type: 'function',
+    name: 'percentageL2Owner',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'l1UniFiRewardDistributorContract',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'minWithdrawalAmount',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'totalProcessed',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+] as const satisfies Abi;
+
 // ABI for WETH9
 export const WETH9_ABI = [
   {
@@ -562,6 +609,11 @@ function getAbiForContract(address: string): Abi | null {
   // L2ERC721Bridge
   if (lowerAddress === '0x4200000000000000000000000000000000000014') {
     return L2_ERC721_BRIDGE_ABI;
+  }
+
+  // UniFiFeeVault (special vault with different functions)
+  if (lowerAddress === '0x420000000000000000000000000000000000002a') {
+    return UNIFI_FEE_VAULT_ABI;
   }
 
   // Fee Vaults (with extended view functions)

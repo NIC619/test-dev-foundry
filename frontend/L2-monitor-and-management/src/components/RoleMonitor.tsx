@@ -12,6 +12,7 @@ interface RoleMonitorProps {
 
 interface RoleStatus {
   lastTxTimestamp: number | null;
+  lastTxHash: string | null;
   balance: string | null;
   loading: boolean;
   error: string | null;
@@ -25,13 +26,16 @@ export function RoleMonitor({
 }: RoleMonitorProps) {
   const [status, setStatus] = useState<RoleStatus>({
     lastTxTimestamp: null,
+    lastTxHash: null,
     balance: null,
     loading: true,
     error: null,
   });
 
+  const [addressCopied, setAddressCopied] = useState(false);
+
   useEffect(() => {
-    const fetchLastTransaction = async (client: any): Promise<number | null> => {
+    const fetchLastTransaction = async (client: any): Promise<{ timestamp: number; hash: string } | null> => {
       // Try to use block explorer API if configured
       const explorerApiUrl = process.env.REACT_APP_L1_EXPLORER_API_URL;
       const explorerApiKey = process.env.REACT_APP_L1_EXPLORER_API_KEY || '';
@@ -65,7 +69,10 @@ export function RoleMonitor({
           // Etherscan v2 API format
           if (data.status === '1' && data.result && data.result.length > 0) {
             const latestTx = data.result[0];
-            return parseInt(latestTx.timeStamp, 10);
+            return {
+              timestamp: parseInt(latestTx.timeStamp, 10),
+              hash: latestTx.hash,
+            };
           }
         } catch (error) {
           console.warn(`Block explorer API failed for ${roleName}, falling back to RPC:`, error);
@@ -88,9 +95,12 @@ export function RoleMonitor({
 
             if (block.transactions && Array.isArray(block.transactions)) {
               for (const tx of block.transactions) {
-                if (typeof tx === 'object' && tx.from) {
+                if (typeof tx === 'object' && tx.from && tx.hash) {
                   if (tx.from.toLowerCase() === address.toLowerCase()) {
-                    return Number(block.timestamp);
+                    return {
+                      timestamp: Number(block.timestamp),
+                      hash: tx.hash,
+                    };
                   }
                 }
               }
@@ -114,7 +124,7 @@ export function RoleMonitor({
         });
 
         // Fetch balance and latest transaction in parallel
-        const [balanceWei, lastTxTimestamp] = await Promise.all([
+        const [balanceWei, lastTxData] = await Promise.all([
           client.getBalance({ address: address as `0x${string}` }),
           fetchLastTransaction(client),
         ]);
@@ -122,7 +132,8 @@ export function RoleMonitor({
         const balanceEth = formatEther(balanceWei);
 
         setStatus({
-          lastTxTimestamp,
+          lastTxTimestamp: lastTxData?.timestamp || null,
+          lastTxHash: lastTxData?.hash || null,
           balance: balanceEth,
           loading: false,
           error: null,
@@ -131,6 +142,7 @@ export function RoleMonitor({
         console.error(`Error fetching ${roleName} status:`, error);
         setStatus({
           lastTxTimestamp: null,
+          lastTxHash: null,
           balance: null,
           loading: false,
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -197,7 +209,15 @@ export function RoleMonitor({
   const formatTimestamp = (timestamp: number | null): string => {
     if (!timestamp) return 'Unknown';
     const date = new Date(timestamp * 1000);
-    return date.toLocaleString();
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
   };
 
   const formatTimeSince = (timestamp: number | null): string => {
@@ -229,12 +249,32 @@ export function RoleMonitor({
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
+  const copyAddressToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setAddressCopied(true);
+      setTimeout(() => setAddressCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy address:', err);
+    }
+  };
+
+  const getTxUrl = (txHash: string): string => {
+    const explorerBaseUrl = process.env.REACT_APP_L1_EXPLORER_BASE_URL || 'https://etherscan.io';
+    return `${explorerBaseUrl}/tx/${txHash}`;
+  };
+
   return (
     <div className="role-monitor-card">
       <div className="role-header">
         <h3>{roleName}</h3>
-        <span className="role-address" title={address}>
+        <span
+          className="role-address copyable"
+          title={address}
+          onClick={copyAddressToClipboard}
+        >
           {truncateAddress(address)}
+          {addressCopied && <span className="copy-feedback"> ✓</span>}
         </span>
       </div>
 
@@ -249,7 +289,18 @@ export function RoleMonitor({
             <h4>Activity</h4>
             <div className="status-item">
               <span className="status-label">Last Transaction:</span>
-              <span className="status-value">{formatTimestamp(status.lastTxTimestamp)}</span>
+              {status.lastTxHash ? (
+                <a
+                  href={getTxUrl(status.lastTxHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="status-value tx-link"
+                >
+                  {formatTimestamp(status.lastTxTimestamp)}
+                </a>
+              ) : (
+                <span className="status-value">{formatTimestamp(status.lastTxTimestamp)}</span>
+              )}
             </div>
             <div className="status-item">
               <span className="status-label">Time Since:</span>
