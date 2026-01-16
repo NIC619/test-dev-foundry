@@ -199,3 +199,53 @@
 .btn-primary:hover:not(:disabled) {
   background-color: #2563eb;
 }
+
+/* Attested Prover Collapsible Sections */
+.attested-prover-section {
+  margin-bottom: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: white;
+}
+
+.attested-prover-header {
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  background-color: #f9fafb;
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+.attested-prover-header:hover {
+  background-color: #f3f4f6;
+}
+
+.expand-icon {
+  font-size: 0.75rem;
+  color: #6b7280;
+  min-width: 1rem;
+  display: inline-block;
+}
+
+.prover-title {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.875rem;
+}
+
+.prover-summary {
+  margin-left: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.prover-field {
+  padding: 0.5rem 1rem;
+  padding-left: 2rem;
+  border-top: 1px solid #f3f4f6;
+}

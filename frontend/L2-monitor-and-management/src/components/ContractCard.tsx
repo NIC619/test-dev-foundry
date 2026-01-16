@@ -33,6 +33,7 @@ export default function ContractCard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [expandedProvers, setExpandedProvers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchInfo = async () => {
@@ -252,56 +253,109 @@ export default function ContractCard({
           })
         )}
 
-        {/* Display dynamically queried attestedProvers mapping results */}
-        {Object.keys(viewData)
-          .filter(key => key.startsWith('attestedProvers_'))
-          .sort()
-          .map(key => {
-            const rawValue = viewData[key];
-            const parts = key.split('_');
-            const instanceId = parts[1];
-            const fieldName = parts[2];
+        {/* Display dynamically queried attestedProvers mapping results - Grouped and Collapsible */}
+        {(() => {
+          // Group attested prover fields by instance ID
+          const proverGroups: Record<string, Record<string, any>> = {};
+          Object.keys(viewData)
+            .filter(key => key.startsWith('attestedProvers_'))
+            .forEach(key => {
+              const parts = key.split('_');
+              const instanceId = parts[1];
+              if (!proverGroups[instanceId]) {
+                proverGroups[instanceId] = {};
+              }
+              proverGroups[instanceId][key] = viewData[key];
+            });
 
-            const isCopyable = isCopyableValue(key, rawValue);
-            const displayValue = rawValue !== undefined && rawValue !== null
-              ? formatViewData(rawValue, key)
-              : '—';
+          const instanceIds = Object.keys(proverGroups).sort((a, b) => parseInt(a) - parseInt(b));
 
-            // Create label based on field name
-            let label = '';
-            if (fieldName === 'addr') label = `Attested Prover ${instanceId} - Address`;
-            else if (fieldName === 'validUntil') label = `Attested Prover ${instanceId} - Valid Until`;
-            else if (fieldName === 'teeType') label = `Attested Prover ${instanceId} - TEE Type`;
-            else if (fieldName === 'elType') label = `Attested Prover ${instanceId} - EL Type`;
-            else if (fieldName === 'goldenMeasurement') {
-              const subField = parts[3];
-              if (subField === 'cloudType') label = `Attested Prover ${instanceId} - Golden Measurement Cloud Type`;
-              else if (subField === 'teeType') label = `Attested Prover ${instanceId} - Golden Measurement TEE Type`;
-              else if (subField === 'elType') label = `Attested Prover ${instanceId} - Golden Measurement EL Type`;
-              else if (subField === 'tag') label = `Attested Prover ${instanceId} - Golden Measurement Tag`;
-              else if (subField === 'hash') label = `Attested Prover ${instanceId} - Golden Measurement Hash`;
-            }
+          if (instanceIds.length === 0) return null;
+
+          const toggleProver = (instanceId: string) => {
+            setExpandedProvers(prev => {
+              const newSet = new Set(prev);
+              if (newSet.has(instanceId)) {
+                newSet.delete(instanceId);
+              } else {
+                newSet.add(instanceId);
+              }
+              return newSet;
+            });
+          };
+
+          return instanceIds.map(instanceId => {
+            const isExpanded = expandedProvers.has(instanceId);
+            const proverData = proverGroups[instanceId];
+            const keys = Object.keys(proverData).sort();
+
+            // Get address for summary display
+            const addrKey = keys.find(k => k.endsWith('_addr'));
+            const addrValue = addrKey ? proverData[addrKey] : null;
+            const shortAddr = addrValue ? `${addrValue.slice(0, 6)}...${addrValue.slice(-4)}` : '';
 
             return (
-              <div className="info-row" key={key}>
-                <span className="info-label">{label}:</span>
-                <span
-                  className={isCopyable ? 'info-value copyable' : 'info-value'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (isCopyable && rawValue) {
-                      copyToClipboard(String(rawValue), key);
-                    }
-                  }}
-                  style={{ cursor: isCopyable && rawValue ? 'pointer' : 'default' }}
-                  title={isCopyable && rawValue ? 'Click to copy' : undefined}
+              <div key={`prover-${instanceId}`} className="attested-prover-section">
+                <div
+                  className="attested-prover-header"
+                  onClick={() => toggleProver(instanceId)}
                 >
-                  {loading ? 'Loading...' : displayValue}
-                  {copiedField === key && ' ✓'}
-                </span>
+                  <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+                  <span className="prover-title">Attested Prover {instanceId}</span>
+                  {!isExpanded && shortAddr && (
+                    <span className="prover-summary">{shortAddr}</span>
+                  )}
+                </div>
+
+                {isExpanded && keys.map(key => {
+                  const rawValue = proverData[key];
+                  const parts = key.split('_');
+                  const fieldName = parts[2];
+
+                  const isCopyable = isCopyableValue(key, rawValue);
+                  const displayValue = rawValue !== undefined && rawValue !== null
+                    ? formatViewData(rawValue, key)
+                    : '—';
+
+                  // Create label based on field name
+                  let label = '';
+                  if (fieldName === 'addr') label = 'Address';
+                  else if (fieldName === 'validUntil') label = 'Valid Until';
+                  else if (fieldName === 'teeType') label = 'TEE Type';
+                  else if (fieldName === 'elType') label = 'EL Type';
+                  else if (fieldName === 'goldenMeasurement') {
+                    const subField = parts[3];
+                    if (subField === 'cloudType') label = 'Golden Measurement Cloud Type';
+                    else if (subField === 'teeType') label = 'Golden Measurement TEE Type';
+                    else if (subField === 'elType') label = 'Golden Measurement EL Type';
+                    else if (subField === 'tag') label = 'Golden Measurement Tag';
+                    else if (subField === 'hash') label = 'Golden Measurement Hash';
+                  }
+
+                  return (
+                    <div className="info-row prover-field" key={key}>
+                      <span className="info-label">{label}:</span>
+                      <span
+                        className={isCopyable ? 'info-value copyable' : 'info-value'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isCopyable && rawValue) {
+                            copyToClipboard(String(rawValue), key);
+                          }
+                        }}
+                        style={{ cursor: isCopyable && rawValue ? 'pointer' : 'default' }}
+                        title={isCopyable && rawValue ? 'Click to copy' : undefined}
+                      >
+                        {loading ? 'Loading...' : displayValue}
+                        {copiedField === key && ' ✓'}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             );
-          })}
+          });
+        })()}
       </div>
 
       {isOwnedByConnected && (

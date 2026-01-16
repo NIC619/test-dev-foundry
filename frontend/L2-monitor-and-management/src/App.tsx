@@ -5,6 +5,7 @@ import { wagmiConfig } from './config/wagmi';
 import ChainStatusPage from './pages/ChainStatus';
 import PredeploysPage from './pages/Predeploys';
 import L1ContractsPage from './pages/L1Contracts';
+import ConnectWallet from './components/ConnectWallet';
 import './App.css';
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ function App() {
                 <Link to="/l2-predeploys">L2 Predeploys</Link>
                 <Link to="/l1-contracts">L1 Contracts</Link>
               </div>
+              <ConnectWallet />
             </nav>
 
             <main className="main-content">

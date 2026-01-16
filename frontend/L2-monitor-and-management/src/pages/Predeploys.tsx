@@ -1,15 +1,24 @@
-import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useState, useEffect } from 'react';
+import { useAccount, useSendTransaction, useWaitForTransaction } from 'wagmi';
 import { PREDEPLOYS } from '../config/predeploys';
 import { getContractInfo, generateTransferOwnershipCalldata, generateChangeProxyAdminCalldata, generateUpgradeCalldata, isValidAddress } from '../utils/contracts';
 import ContractCard from '../components/ContractCard';
 import { OwnershipGraph } from '../components/OwnershipGraph';
+import TransactionSuccessModal from '../components/TransactionSuccessModal';
 import './Predeploys.css';
 
 type FilterCategory = 'all' | 'bridge' | 'vault' | 'factory' | 'system' | 'governance' | 'tee';
 
 export default function PredeploysPage() {
   const { address: connectedAddress, isConnected } = useAccount();
+  const { sendTransaction, data: txHash, error: txError, isError: isTxError } = useSendTransaction();
+
+  // Extract hash string from txHash object
+  const hashString = txHash?.hash || (typeof txHash === 'string' ? txHash : undefined);
+
+  const { isLoading: isTxLoading, error: txWaitError } = useWaitForTransaction({
+    hash: hashString as `0x${string}` | undefined,
+  });
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
   const [showOnlyManageable, setShowOnlyManageable] = useState(false);
   const [selectedPredeploy, setSelectedPredeploy] = useState<string | null>(null);
@@ -17,6 +26,52 @@ export default function PredeploysPage() {
   const [newOwner, setNewOwner] = useState('');
   const [newImplementation, setNewImplementation] = useState('');
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successTxHash, setSuccessTxHash] = useState<string>('');
+  const [successContractName, setSuccessContractName] = useState<string>('');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [processedHashes, setProcessedHashes] = useState<Set<string>>(new Set());
+
+  // Handle transaction submitted (show modal when we get the hash)
+  useEffect(() => {
+    // Show success modal as soon as we have a transaction hash
+    // (transaction was submitted to network)
+    // Only show it once per hash
+    if (hashString && !processedHashes.has(hashString)) {
+      setSuccessTxHash(hashString);
+      setShowSuccessModal(true);
+      setActionInProgress(false);
+      // Mark this hash as processed
+      setProcessedHashes(prev => new Set(prev).add(hashString));
+      // Refresh contract data after a delay (give time for tx to be mined)
+      setTimeout(() => {
+        setRefreshKey(prev => prev + 1);
+      }, 3000);
+    }
+  }, [hashString, processedHashes]);
+
+  // Handle transaction errors
+  useEffect(() => {
+    if (isTxError && txError) {
+      alert('Transaction failed: ' + (txError as any)?.message || 'Unknown error');
+      setActionInProgress(false);
+    }
+  }, [isTxError, txError]);
+
+  // Handle wait for transaction errors
+  useEffect(() => {
+    if (txWaitError) {
+      alert('Transaction confirmation error: ' + (txWaitError as any)?.message || 'Unknown error');
+      setActionInProgress(false);
+    }
+  }, [txWaitError]);
+
+  // Show loading state while transaction is being sent
+  useEffect(() => {
+    if (isTxLoading) {
+      setActionInProgress(true);
+    }
+  }, [isTxLoading]);
 
   const filtered = PREDEPLOYS.filter(p => {
     const categoryMatch = filterCategory === 'all' || p.category === filterCategory;
@@ -103,39 +158,26 @@ export default function PredeploysPage() {
   };
 
   const handleWithdraw = async (predeploy: typeof PREDEPLOYS[0]) => {
+    if (!connectedAddress) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
     setActionInProgress(true);
+    setSuccessContractName(predeploy.name);
     try {
-      const contractInfo = await getContractInfo(predeploy.address);
+      // Fee vaults have permissionless withdraw - anyone can call it
+      // Funds go to the configured recipient address, not the caller
+      const calldata = '0x3ccfd60b'; // withdraw() function selector
 
-      if (!contractInfo.owner) {
-        alert('Could not retrieve current owner');
-        return;
-      }
-
-      const isEOA = await isOwnerEOA(contractInfo.owner);
-
-      if (isEOA) {
-        if (connectedAddress?.toLowerCase() !== contractInfo.owner.toLowerCase()) {
-          alert('You are not the owner of this contract');
-          return;
-        }
-        // Execute withdraw directly
-        const calldata = '0x3ccfd60b'; // withdraw() function selector
-        alert('Execute this transaction from your wallet:\n\nTo: ' + predeploy.address + '\nData: ' + calldata);
-      } else {
-        // Owner is a contract
-        const calldata = '0x3ccfd60b';
-        alert(
-          'This contract is owned by a multisig or contract address.\n\nCalldata for multisig:\n' + calldata +
-            '\n\nTarget: ' +
-            predeploy.address,
-        );
-      }
+      sendTransaction({
+        to: predeploy.address as `0x${string}`,
+        data: calldata as `0x${string}`,
+      });
 
       resetForm();
     } catch (error) {
       alert('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
       setActionInProgress(false);
     }
   };
@@ -254,7 +296,7 @@ export default function PredeploysPage() {
       <div className="predeploys-grid">
         {filtered.map(predeploy => (
           <ContractCard
-            key={predeploy.address}
+            key={`${predeploy.address}-${refreshKey}`}
             predeploy={predeploy}
             isSelected={selectedPredeploy === predeploy.address}
             onSelect={() => setSelectedPredeploy(predeploy.address)}
@@ -365,6 +407,15 @@ export default function PredeploysPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showSuccessModal && successTxHash && (
+        <TransactionSuccessModal
+          txHash={successTxHash}
+          explorerUrl={process.env.REACT_APP_L2_EXPLORER_URL || 'https://testnet-unifi-explorer.puffer.fi'}
+          contractName={successContractName}
+          onClose={() => setShowSuccessModal(false)}
+        />
       )}
     </div>
   );

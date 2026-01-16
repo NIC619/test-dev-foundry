@@ -478,3 +478,69 @@ REACT_APP_PROPOSER_ADDRESS=0x4aD30eCFb92b9311A853d296c515fb0D6505d89C
     - Below 0.25 ETH = Level 5 (most severe, red)
   - Message displays the most severe threshold exceeded
   - Levels mapped to CSS classes: 1-2 = medium, 3-4 = high, 5+ = critical
+
+### Collapsible Attested Provers (ProverRegistry) (NEW)
+- **Purpose**: Improve UI readability for growing list of attested provers
+- **Implementation**:
+  - Added collapsible/expandable sections for each attested prover
+  - Click-to-expand/collapse functionality with visual indicators (▶/▼ arrows)
+  - Shows prover address summary when collapsed (e.g., `0xBfA7...0D22`)
+  - Shows all fields when expanded (Address, Valid Until, TEE Type, EL Type, Golden Measurement details)
+  - State management using React hooks: `useState<Set<string>>` to track expanded provers
+  - All provers collapsed by default for cleaner initial view
+- **Styling**:
+  - Added `.attested-prover-section`: Card-like container with border
+  - Added `.attested-prover-header`: Clickable header with hover effect
+  - Added `.expand-icon`: Arrow icons (▶ collapsed, ▼ expanded)
+  - Added `.prover-title`: Bold section title
+  - Added `.prover-summary`: Monospace address display when collapsed
+  - Added `.prover-field`: Indented field rows when expanded
+- **Component Changes**:
+  - Modified `ContractCard.tsx` (lines 256-358)
+  - Added `ContractCard.css` (lines 203-251)
+- **UX Improvements**:
+  - Reduced vertical space usage significantly
+  - Cleaner presentation of prover information
+  - All fields remain accessible with one click
+  - Maintained copyable functionality for all fields
+
+### Wallet Connection & Transaction Execution (NEW)
+- **Purpose**: Enable users to execute blockchain transactions directly from the dashboard
+- **Wallet Integration**:
+  - Added wagmi v1 integration with InjectedConnector for MetaMask and browser wallets
+  - Created `ConnectWallet` component with connect/disconnect functionality
+  - Added to navbar for easy access across all pages
+  - Shows connected wallet address (shortened format: `0xBfA7...0D22`)
+  - **Auto-connect disabled**: Requires explicit user action to connect wallet
+- **Transaction Execution**:
+  - Updated fee vault withdrawal to send actual blockchain transactions
+  - Uses `useSendTransaction` and `useWaitForTransaction` hooks from wagmi
+  - Prompts MetaMask for transaction approval
+  - Transaction hash extraction: Handles object format from wagmi (`{hash: "0x..."}`)
+  - Error handling for transaction failures
+- **Transaction Success Modal**:
+  - Shows immediately after transaction submission (doesn't wait for mining)
+  - Displays transaction hash (shortened with full copy functionality)
+  - "View on Explorer" button opens transaction in new tab
+  - Configurable L2 explorer URL via `REACT_APP_L2_EXPLORER_URL`
+  - Modal can be closed without reopening (hash tracking with `Set<string>`)
+- **Auto-refresh After Transaction**:
+  - Contract data automatically refreshes 3 seconds after transaction submission
+  - Allows time for transaction to be mined before showing updated data
+  - Uses React key prop with `refreshKey` state to force component re-render
+- **Environment Variables**:
+  - `REACT_APP_L2_EXPLORER_URL`: L2 block explorer URL (default: https://testnet-unifi-explorer.puffer.fi)
+- **Implementation Files**:
+  - `src/config/wagmi.ts`: Wagmi configuration with InjectedConnector
+  - `src/components/ConnectWallet.tsx`: Wallet connection component
+  - `src/components/ConnectWallet.css`: Wallet button styling
+  - `src/components/TransactionSuccessModal.tsx`: Success popup component
+  - `src/components/TransactionSuccessModal.css`: Modal styling
+  - `src/pages/Predeploys.tsx`: Updated withdrawal handler with transaction execution
+- **Key Features**:
+  - Permissionless withdrawals: Anyone can trigger fee vault withdrawals (funds go to configured recipient)
+  - Real-time transaction status tracking with loading states
+  - Professional UI/UX with color-coded feedback
+  - Prevents duplicate modals for same transaction hash
+  - Clean production code (all debug logs removed)
+- **Build Stats**: 131.82 kB (main bundle size, gzipped)

@@ -1,11 +1,25 @@
 import { createConfig, configureChains, mainnet } from 'wagmi';
+import { InjectedConnector } from 'wagmi/connectors/injected';
 import { publicProvider } from 'wagmi/providers/public';
 
-// For Wagmi v1, use simpler configuration
-// Users will connect their own wallet via MetaMask or similar
-export const wagmiConfig = createConfig(
-  configureChains(
-    [mainnet], // Fallback chain, users will override via wallet
-    [publicProvider()],
-  ),
+// Configure chains and providers
+const { chains, publicClient, webSocketPublicClient } = configureChains(
+  [mainnet], // Fallback chain, users will override via wallet
+  [publicProvider()],
 );
+
+// Create wagmi config with connectors
+export const wagmiConfig = createConfig({
+  autoConnect: false, // Don't auto-connect, require user action
+  connectors: [
+    new InjectedConnector({
+      chains,
+      options: {
+        name: 'Injected',
+        shimDisconnect: true,
+      },
+    }),
+  ],
+  publicClient,
+  webSocketPublicClient,
+});
