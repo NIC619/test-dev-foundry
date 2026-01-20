@@ -16,6 +16,7 @@ const BALANCE_THRESHOLDS = [5, 2.5, 1, 0.5, 0.25]; // ETH
 
 export default function ChainStatusPage() {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showTestRpcModal, setShowTestRpcModal] = useState(false);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -37,8 +38,15 @@ export default function ChainStatusPage() {
 
       {/* Block Monitoring Section */}
       <div className="blocks-section">
-        <h2 className="section-title">Block Information</h2>
-        <p className="section-description">Block data across all RPC endpoints</p>
+        <div className="section-header">
+          <div>
+            <h2 className="section-title">Block Information</h2>
+            <p className="section-description">Block data across all RPC endpoints</p>
+          </div>
+          <button className="test-rpc-btn" onClick={() => setShowTestRpcModal(true)}>
+            🔍 Test Custom RPC
+          </button>
+        </div>
         <div className="endpoints-grid" key={`blocks-${refreshKey}`}>
           {RPC_ENDPOINTS.map(endpoint => (
             <div key={endpoint.url} className="endpoint-card">
@@ -82,6 +90,186 @@ export default function ChainStatusPage() {
             />
           </div>
         )}
+      </div>
+
+      {/* Test RPC Modal */}
+      {showTestRpcModal && (
+        <TestRpcModal onClose={() => setShowTestRpcModal(false)} />
+      )}
+    </div>
+  );
+}
+
+function TestRpcModal({ onClose }: { onClose: () => void }) {
+  const [rpcUrl, setRpcUrl] = useState('');
+  const [testKey, setTestKey] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [testResults, setTestResults] = useState<{
+    latest: BlockInfo | null;
+    safe: BlockInfo | null;
+    finalized: BlockInfo | null;
+    errors: { latest?: string; safe?: string; finalized?: string };
+  } | null>(null);
+
+  const handleTest = async () => {
+    if (!rpcUrl.trim()) {
+      alert('Please enter an RPC URL');
+      return;
+    }
+
+    setIsLoading(true);
+    setTestResults(null);
+
+    const endpoint: RpcEndpoint = {
+      name: 'Test Endpoint',
+      url: rpcUrl.trim(),
+    };
+
+    const results: typeof testResults = {
+      latest: null,
+      safe: null,
+      finalized: null,
+      errors: {},
+    };
+
+    // Fetch all block tags
+    for (const tag of BLOCK_TAGS) {
+      try {
+        const block = await getBlockByTag(endpoint, tag);
+        results[tag] = block;
+      } catch (err) {
+        results.errors[tag] = err instanceof Error ? err.message : 'Unknown error';
+      }
+    }
+
+    setTestResults(results);
+    setIsLoading(false);
+    setTestKey(prev => prev + 1);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleTest();
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal test-rpc-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Test RPC Endpoint</h2>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="modal-body">
+          <div className="test-rpc-input-section">
+            <label htmlFor="rpc-url">RPC Endpoint URL</label>
+            <div className="test-rpc-input-row">
+              <input
+                id="rpc-url"
+                type="text"
+                placeholder="https://your-rpc-endpoint.com"
+                value={rpcUrl}
+                onChange={e => setRpcUrl(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isLoading}
+              />
+              <button
+                className="btn btn-primary"
+                onClick={handleTest}
+                disabled={isLoading || !rpcUrl.trim()}
+              >
+                {isLoading ? 'Testing...' : 'Test'}
+              </button>
+            </div>
+          </div>
+
+          {isLoading && (
+            <div className="test-rpc-loading">
+              <div className="spinner"></div>
+              <span>Fetching block data...</span>
+            </div>
+          )}
+
+          {testResults && (
+            <div className="test-rpc-results" key={testKey}>
+              <h3>Block Information</h3>
+              <div className="test-rpc-url">{rpcUrl}</div>
+
+              <div className="test-results-grid">
+                {BLOCK_TAGS.map(tag => (
+                  <div key={tag} className="test-result-section">
+                    <h4 className="tag-name">{tag.charAt(0).toUpperCase() + tag.slice(1)}</h4>
+                    {testResults.errors[tag] ? (
+                      <div className="block-error">Error: {testResults.errors[tag]}</div>
+                    ) : testResults[tag] ? (
+                      <TestBlockDisplay block={testResults[tag]!} />
+                    ) : (
+                      <div className="block-empty">No data</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TestBlockDisplay({ block }: { block: BlockInfo }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyHashToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(block.hash);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <div className="block-details">
+      <div className="block-row">
+        <span className="block-label">Block #</span>
+        <span className="block-value">{block.number.toString()}</span>
+      </div>
+      <div className="block-row">
+        <span className="block-label">Hash</span>
+        <div className="block-hash-container">
+          <span className="block-hash" title={block.hash}>
+            {truncateHash(block.hash)}
+          </span>
+          <button
+            className="copy-btn"
+            onClick={copyHashToClipboard}
+            title="Copy full hash"
+            aria-label="Copy hash"
+          >
+            {copied ? '✓ Copied' : '📋 Copy'}
+          </button>
+        </div>
+      </div>
+      <div className="block-row">
+        <span className="block-label">Timestamp</span>
+        <span className="block-value">
+          {new Date(Number(block.timestamp) * 1000).toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+          })}
+        </span>
       </div>
     </div>
   );

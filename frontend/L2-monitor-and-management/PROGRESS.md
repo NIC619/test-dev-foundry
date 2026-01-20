@@ -544,3 +544,23 @@ REACT_APP_PROPOSER_ADDRESS=0x4aD30eCFb92b9311A853d296c515fb0D6505d89C
   - Prevents duplicate modals for same transaction hash
   - Clean production code (all debug logs removed)
 - **Build Stats**: 131.82 kB (main bundle size, gzipped)
+
+### Test Custom RPC Feature (NEW)
+- **Purpose**: Quickly test block information from any custom RPC endpoint
+- **Location**: Chain Status page → Block Information section
+- **Features**:
+  - "Test Custom RPC" button next to Block Information section header
+  - Opens modal with RPC URL input field
+  - Press Enter or click "Test" button to fetch block data
+  - Displays block information for all three tags: latest, safe, finalized
+  - Shows block number, hash (with copy functionality), and timestamp
+  - Error handling for invalid or unreachable endpoints
+- **Use Cases**:
+  - Quickly verify if a custom RPC endpoint is working
+  - Compare block data between different RPC providers
+  - Debug RPC connectivity issues
+- **Implementation**:
+  - Added `TestRpcModal` component in `ChainStatus.tsx`
+  - Added `TestBlockDisplay` component for rendering results
+  - Added CSS styling for modal and button in `ChainStatus.css`
+  - Reuses existing `getBlockByTag` utility function from `utils/rpc.ts`
